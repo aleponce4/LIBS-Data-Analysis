@@ -53,4 +53,4 @@ This project is currently in active development. If you have suggestions, feedba
 I'd like to extend my gratitude to:
 
 - **Onteko Inc.** for providing the resources that made the development of this software possible.
-- **Teresa Flores Reyes** for her invaluable spectroscopy expertise, guidance throughout the project, and for conducting the essential experimentation that led to the development of the elemental databases.
+- **Teresa Flores, Phd** for her invaluable spectroscopy expertise, guidance throughout the project, and for conducting the essential experimentation that led to the development of the elemental databases.
