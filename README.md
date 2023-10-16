@@ -41,7 +41,17 @@ The software is provided as a standalone executable for Windows. No installation
 
 1. **Run the Software**: Simply double-click the downloaded executable to start or run `main.py` if using the source code.
 2. **Import Data**: Use the 'Import Data' function to load your LIBS data.
-3. **Adjust and Analyze**: Utilize the various features mentioned above to process and analyze your data.
+![Alt text](images/1.jpg)
+3. **Adjust and Analyze**: 
+
+   - **3.1 Visual Apearance**: Use the 'Adjust Plot' tab to change the plot's visual apearance
+   ![Alt text](images/2.jpg)
+   - **3.2 Normalization**: Use the 'Adjust Spectrum' tab to apply apply normalization fitlers
+   - **3.3 Peak Search**:  Use the 'Search Element' tab to search desired peaks. Select elements of interes by cliking in the periodic table, and select wanted ionization levels and peak database.
+   ![Alt text](images/4.jpg)
+   - **3.4 Final adjustments**:  Use the next tab to define an intensity treshold for peaks of itnerest and hide unlabel peaks.
+   ![Alt text](images/5.jpg)
+
 4. **Export Results**: Once satisfied, you can export your plots and adjusted data.
 
 ## Contributing
