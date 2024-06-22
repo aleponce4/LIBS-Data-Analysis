@@ -255,29 +255,37 @@ def reset_data(app):
 def import_data(app):
     reset_data(app)  # Reset the data before importing a new file
     filetypes = [("Text files", "*.txt"), ("All files", "*.*")]
-    file_path = filedialog.askopenfilename(title="Select a data file", filetypes=filetypes)
+    file_path = filedialog.askopenfilenames(title="Select data files", filetypes=filetypes)  # Allows multiple file selection
 
-        # Read the file content into a string
-    with open(file_path, 'r') as file:
-        file_content = file.read()
+    # Initialize an empty DataFrame to store data from all files
+    all_data = pd.DataFrame()
 
-    # Check if the comma is used as a decimal separator
-    if ',' in file_content and '.' not in file_content:
-        decimal_separator = ','
-        delimiter = '\t'
+    for path in file_path:
+        with open(path, 'r') as file:
+            file_content = file.read()
+
+        # Determine the decimal separator and delimiter
+        decimal_separator = ',' if ',' in file_content and '.' not in file_content else '.'
+        delimiter = '\t' if '\t' in file_content else ','
+
+        # Read the CSV file with the correct delimiter and decimal separator
+        data = pd.read_csv(path, sep=delimiter, engine='python', header=None, decimal=decimal_separator, skiprows=1)
+        
+        # Append the data from each file
+        all_data = pd.concat([all_data, data], axis=0)
+
+    # Group by the first column (wavelength), and calculate the mean of the second column (intensity)
+    if not all_data.empty:
+        averaged_data = all_data.groupby(0).mean().reset_index()
+        x = averaged_data[0]
+        y = averaged_data[1]
     else:
-        decimal_separator = '.'
-        delimiter = None
-
-    # Read the CSV file with the correct delimiter and decimal separator
-    data = pd.read_csv(file_path, sep=delimiter, engine='python', header=None, decimal=decimal_separator, skiprows=1)
-    x = data[0]
-    y = data[1]
+        x, y = pd.Series(), pd.Series()  # Handle the case where no files are selected
 
     # Update the x_data and y_data attributes in the App class
     app.x_data = x
     app.y_data = y
-    app.data = data
+    app.data = averaged_data
 
     # Clear the current plot
     app.ax.clear()
@@ -293,7 +301,7 @@ def import_data(app):
     app.ax.grid(which='both', linestyle='--', linewidth=0.5)
 
     # Extract the file name from the file path
-    file_name = os.path.basename(file_path)
+    file_name = ", ".join(os.path.basename(path) for path in file_path)
     # Set the graph title based on the CSV file name    
     update_title(app, file_name)
 
