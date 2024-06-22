@@ -11,9 +11,9 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
 import numpy as np
-import textalloc as ta
 import time
 import re
+import textalloc as ta
 import markdown
 from tkhtmlview import HTMLLabel
 
