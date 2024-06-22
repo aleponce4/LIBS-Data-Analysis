@@ -32,6 +32,7 @@ def create_sidebar(app):
     app.root.sidebar_frame = ttk.Frame(app.root, width=190)
     app.root.sidebar_frame.place(x=0, y=0, relwidth=0.1, relheight=1)
 
+    # Create a new frame to hold the buttons and labels
     buttons_frame = ttk.LabelFrame(app.root.sidebar_frame)
     buttons_frame.grid(row=1, column=0, padx=30, pady=2)
 
@@ -49,8 +50,11 @@ def create_sidebar(app):
         ("Search Element", "Icons/search_icon.png", functools.partial(periodic_table_window, app, app.ax)),
         ("Export Plot", "Icons/export_icon.png", functools.partial(export_plot, app, app.ax)),
         ("Export Data", "Icons/savedata_icon.png", functools.partial(export_data, app)),
+        ("Add to Training Library", "Icons/add_to_library_icon.png", functools.partial(add_to_training_library, app)),  
+        ("Apply Calibration Curve", "Icons/apply_library_icon.png", functools.partial(apply_calibration_curve, app)),  
         ("Clean Plot", "Icons/clean_icon.png", functools.partial(clean_plot, app)),
     ]
+
 
     icon_size = (40, 40)
     for i, (text, icon_path, command) in enumerate(icons):
@@ -174,6 +178,18 @@ def export_data(app):
         elif file_extension == ".xlsx":
             df.to_excel(file_path, index=False)
         messagebox.showinfo("Export Successful", f"The data was successfully exported to {file_path}")
+
+
+# Quantitative LIBS functions
+def add_to_training_library(app):
+    # Placeholder function for adding data to the training library for regression curve fitting and quantitative analysis
+    pass
+
+def apply_calibration_curve(app):
+    # Placeholder function for applying the calibration curve to CSV files to get quantitative measurements
+    pass
+
+
 
 
 
