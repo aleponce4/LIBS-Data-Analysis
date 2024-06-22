@@ -1,4 +1,7 @@
-# main.py - Contains the main application loop and imports necessary modules and files.
+# main.py - Contains the main application loop and imports necessary modules and files. This file is the entry point for the application. 
+# It also sets the TCL_LIBRARY and SV_TTK_THEME environment variables when running as a compiled executable.
+
+# Importing necessary modules
 import sys
 import os
 import traceback
