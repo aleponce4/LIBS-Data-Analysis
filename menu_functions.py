@@ -1,16 +1,18 @@
 import os
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import Toplevel, filedialog
+from tkinter import ttk
+from tkinter import messagebox
 import pandas as pd
 import functools
 from PIL import Image, ImageTk
 from search_element import search_element, periodic_table_window
 from graph_space import update_title
 import graph_space
-import live_graph_space
 import numpy as np
 from adjust_spectrum import adjust_spectrum
 from adjust_plot import adjust_plot
+import numpy as np
 
 # Function to create acquisition buttons in the sidebar
 def create_acquisition_buttons(app):
@@ -180,17 +182,168 @@ def export_data(app):
         messagebox.showinfo("Export Successful", f"The data was successfully exported to {file_path}")
 
 
+########################################################################################################################
+
 # Quantitative LIBS functions
+# Function to calculate FWHM
+def calculate_fwhm(spectrum_data, peak_wavelength, peak_intensity):
+    # Find the index of the closest wavelength to the peak_wavelength
+    closest_idx = (np.abs(spectrum_data['wavelength'] - peak_wavelength)).argmin()
+    half_max = peak_intensity / 2
+
+    # Find left point where intensity <= half_max
+    left_idx = closest_idx
+    while left_idx > 0 and spectrum_data['intensity'][left_idx] > half_max:
+        left_idx -= 1
+
+    # Find right point where intensity <= half_max
+    right_idx = closest_idx
+    while right_idx < len(spectrum_data) - 1 and spectrum_data['intensity'][right_idx] > half_max:
+        right_idx += 1
+
+    fwhm = spectrum_data['wavelength'][right_idx] - spectrum_data['wavelength'][left_idx]
+    return fwhm
+
+# Function to calculate SNR with dynamic peak width (FWHM)
+def calculate_snr(spectrum_data, peak_wavelength, peak_intensity):
+    fwhm = calculate_fwhm(spectrum_data, peak_wavelength, peak_intensity)
+    half_fwhm = fwhm / 2
+
+    # Define noise regions: 2*FWHM on either side of the peak
+    noise_region = spectrum_data[
+        ((spectrum_data['wavelength'] < peak_wavelength - half_fwhm) & (spectrum_data['wavelength'] > peak_wavelength - 2 * fwhm)) |
+        ((spectrum_data['wavelength'] > peak_wavelength + half_fwhm) & (spectrum_data['wavelength'] < peak_wavelength + 2 * fwhm))
+    ]
+    
+    noise_level = np.std(noise_region['intensity'])  # Estimate noise as the standard deviation of the noise region
+    snr = peak_intensity / noise_level if noise_level > 0 else 0
+    return snr
+
+
+# Integrate into add_to_training_library function
 def add_to_training_library(app):
-    # Placeholder function for adding data to the training library for regression curve fitting and quantitative analysis
-    pass
+    if not app.peak_data:
+        messagebox.showerror("Error", "No data found.")
+        return
+
+    # Construct spectrum data DataFrame from app.x_data and app.y_data
+    spectrum_data = pd.DataFrame({
+        'wavelength': app.x_data,
+        'intensity': app.y_data
+    })
+
+    # Convert app.peak_data to DataFrame and calculate SNR
+    peak_data_df = pd.DataFrame(app.peak_data, columns=["wavelength", "element_symbol", "ionization_level", "relative_intensity"])
+    peak_data_df['SNR'] = peak_data_df.apply(
+        lambda row: calculate_snr(spectrum_data, row['wavelength'], row['relative_intensity']), axis=1
+    )
+
+    # Create a new window
+    window = Toplevel(app.root)
+    window.title("Add to Training Library")
+
+    # Dropdown for selecting element
+    ttk.Label(window, text="Select Element:").grid(row=0, column=0, padx=5, pady=5)
+    element_var = tk.StringVar()
+    element_dropdown = ttk.Combobox(window, textvariable=element_var)
+    element_dropdown['values'] = sorted(set(peak_data_df['element_symbol']))
+    element_dropdown.grid(row=0, column=1, padx=5, pady=5)
+
+    # Frame for table and checkboxes
+    peaks_frame = ttk.Frame(window)
+    peaks_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+
+    # Create canvas to hold checkboxes and treeview
+    canvas = tk.Canvas(peaks_frame)
+    canvas.grid(row=0, column=0, sticky="nsew")
+
+    # Scrollbars for the canvas
+    scrollbar_y = ttk.Scrollbar(peaks_frame, orient='vertical', command=canvas.yview)
+    scrollbar_y.grid(row=0, column=1, sticky='ns')
+    scrollbar_x = ttk.Scrollbar(peaks_frame, orient='horizontal', command=canvas.xview)
+    scrollbar_x.grid(row=1, column=0, sticky='ew')
+
+    canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
+
+    # Create a frame inside the canvas
+    inner_frame = ttk.Frame(canvas)
+    canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+
+    # Create a list to store the BooleanVars
+    check_vars = []
+
+    # Add header labels with padding for SNR column
+    ttk.Label(inner_frame, text="Select", font=('Helvetica', 10, 'bold')).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Label(inner_frame, text="Wavelength (nm)", font=('Helvetica', 10, 'bold')).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Label(inner_frame, text="Intensity", font=('Helvetica', 10, 'bold')).grid(row=0, column=2, padx=5, pady=5)
+    ttk.Label(inner_frame, text="SNR", font=('Helvetica', 10, 'bold')).grid(row=0, column=3, padx=(20, 5), pady=5)
+
+    # Function to update the table when an element is selected
+    def update_peaks_table(*args):
+        for widget in inner_frame.winfo_children()[4:]:  # Keep the header labels
+            widget.destroy()
+        check_vars.clear()
+
+        selected_element = element_var.get()
+        element_data = peak_data_df[peak_data_df['element_symbol'] == selected_element]
+
+        for idx, row in element_data.iterrows():
+            check_var = tk.BooleanVar()
+            check_vars.append(check_var)
+            ttk.Checkbutton(inner_frame, variable=check_var).grid(row=idx + 1, column=0, sticky="w")
+            ttk.Label(inner_frame, text=row['wavelength']).grid(row=idx + 1, column=1)
+            ttk.Label(inner_frame, text=row['relative_intensity']).grid(row=idx + 1, column=2)
+            ttk.Label(inner_frame, text=f"{row['SNR']:.2f}").grid(row=idx + 1, column=3, padx=(20, 5))
+
+        inner_frame.update_idletasks()
+        canvas.config(scrollregion=canvas.bbox("all"))
+
+    element_var.trace('w', update_peaks_table)
+
+    # Input fields for concentration and units
+    ttk.Label(window, text="Concentration:").grid(row=2, column=0, padx=5, pady=5)
+    concentration_var = tk.StringVar()
+    concentration_entry = ttk.Entry(window, textvariable=concentration_var)
+    concentration_entry.grid(row=2, column=1, padx=5, pady=5)
+
+    ttk.Label(window, text="Units:").grid(row=3, column=0, padx=5, pady=5)
+    units_var = tk.StringVar()
+    units_entry = ttk.Entry(window, textvariable=units_var)
+    units_entry.grid(row=3, column=1, padx=5, pady=5)
+
+    # Function to save selected data to CSV
+    def save_to_library():
+        selected_peaks = []
+        selected_element = element_var.get()
+        for i, check_var in enumerate(check_vars):
+            if check_var.get():
+                row = peak_data_df[(peak_data_df['element_symbol'] == selected_element)].iloc[i]
+                selected_peaks.append([row['wavelength'], selected_element, row['ionization_level'], row['relative_intensity'], concentration_var.get(), units_var.get()])
+
+        # Save to CSV
+        library_file = "calibration_data_library.csv"
+        df = pd.DataFrame(selected_peaks, columns=["wavelength", "element_symbol", "ionization_level", "relative_intensity", "concentration", "units"])
+        if os.path.exists(library_file):
+            df.to_csv(library_file, mode='a', header=False, index=False)
+        else:
+            df.to_csv(library_file, mode='w', header=True, index=False)
+        
+        messagebox.showinfo("Success", "Data added to training library successfully.")
+        window.destroy()
+
+    # Save button
+    save_button = ttk.Button(window, text="Save", command=save_to_library)
+    save_button.grid(row=4, column=0, columnspan=2, pady=10)
+
+    # Initialize the peaks table
+    update_peaks_table()
+
+
+#######################################################################################
 
 def apply_calibration_curve(app):
     # Placeholder function for applying the calibration curve to CSV files to get quantitative measurements
     pass
-
-
-
 
 
 
