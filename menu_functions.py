@@ -53,7 +53,7 @@ def create_sidebar(app):
 
     # Create a new frame to hold the buttons and labels
     buttons_frame = ttk.LabelFrame(app.root.sidebar_frame)
-    buttons_frame.grid(row=1, column=0, padx=20, pady=2)
+    buttons_frame.grid(row=1, column=0, padx=30, pady=2)
 
     # Create a new style for the emphasized label
     style = ttk.Style()

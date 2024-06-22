@@ -26,13 +26,13 @@ def on_resize(event, canvas):
 # Create the graph space
 def create_graph_space(app):
     graph_frame = tk.Frame(app.root)
-    graph_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=(100, 0))
+    graph_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=(150, 0))
 
 
     
     # Create the figure and axes
     fig, ax = plt.subplots(figsize=(14, 8))  # Increase the height of the graph space
-    fig.subplots_adjust(left=0.2) # change the left margin to 0.2
+    fig.subplots_adjust(left=0.1) # change the left margin to 0.2
     ax.set_xlim([100, 1000])
     ax.set_xlabel("Wavelength (nm)")
     ax.set_ylabel("Relative Intensity")
