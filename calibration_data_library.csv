@@ -1,9 +1,1 @@
 wavelength,element_symbol,ionization_level,relative_intensity,concentration,units
-393.0,Ti,1,64343.29,10,ppm
-500.0,Ti,1,54298.0,10,ppm
-393.0,Ti,1,64343.29,100,ppm
-500.0,Ti,1,64298.0,100,ppm
-393.0,Ti,1,64343.29,1000,ppm
-500.0,Ti,1,74298.0,1000,ppm
-393.0,Ti,1,64343.29,10000,ppm
-500.0,Ti,1,104298.0,10000,ppm

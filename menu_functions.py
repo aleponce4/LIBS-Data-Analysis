@@ -13,6 +13,7 @@ import numpy as np
 from adjust_spectrum import adjust_spectrum
 from adjust_plot import adjust_plot
 import numpy as np
+from calibration_curve import apply_calibration_curve
 
 # Function to create acquisition buttons in the sidebar
 def create_acquisition_buttons(app):
@@ -53,7 +54,7 @@ def create_sidebar(app):
         ("Export Plot", "Icons/export_icon.png", functools.partial(export_plot, app, app.ax)),
         ("Export Data", "Icons/savedata_icon.png", functools.partial(export_data, app)),
         ("Add to Training Library", "Icons/add_to_library_icon.png", functools.partial(add_to_training_library, app)),  
-        ("Apply Calibration Curve", "Icons/apply_library_icon.png", functools.partial(apply_calibration_curve, app)),  
+        ("Apply Calibration Curve", "Icons/apply_library_icon.png", functools.partial(apply_calibration_curve, app)), 
         ("Clean Plot", "Icons/clean_icon.png", functools.partial(clean_plot, app)),
     ]
 
@@ -339,11 +340,6 @@ def add_to_training_library(app):
     update_peaks_table()
 
 
-#######################################################################################
-
-def apply_calibration_curve(app):
-    # Placeholder function for applying the calibration curve to CSV files to get quantitative measurements
-    pass
 
 
 
