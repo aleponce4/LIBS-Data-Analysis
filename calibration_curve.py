@@ -101,19 +101,36 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     # Plot the calibration curve
     fig, ax = plt.subplots()
     
+    # Calibration data
     peak_data = element_data[element_data['wavelength'] == selected_peak['wavelength']]
     intensities = peak_data['relative_intensity']
     concentrations_calibration = peak_data['concentration']
     
-    ax.scatter(intensities, concentrations_calibration, color='orange', label='Calibration Data')
-    ax.plot(intensities, model.predict(np.array(intensities).reshape(-1, 1)), label='Linear Fit')
+    # Scatterplot for calibration data and linear fit
+    ax.scatter(intensities, concentrations_calibration, label='Calibration Data', alpha=0.5, color="b")
+    ax.plot(intensities, model.predict(np.array(intensities).reshape(-1, 1)), label='Linear Fit', color="r")
     
+    # Labels and title
     ax.set_xlabel('Intensity')
     ax.set_ylabel('Concentration')
     ax.set_title(f'Calibration Curve for {selected_peak["wavelength"]} nm')
     ax.legend()
     ax.grid(True)
+
+    # Plot the sample data points
+    peak_wavelength = selected_peak['wavelength']
+    wavelengths = new_data['wavelength']
+    replicate_columns = [col for col in new_data.columns if col.startswith('intensity_rep')]
     
+    for idx, rep_col in enumerate(replicate_columns, start=1):
+        intensities = new_data[rep_col]
+        # Find the index of the closest wavelength
+        closest_idx = (np.abs(wavelengths - peak_wavelength)).idxmin()
+        closest_intensity = intensities.iloc[closest_idx]
+        concentration = results_table.loc[results_table['Replicate'] == f'Replicate {idx}', 'Concentration'].values[0]
+        ax.scatter(closest_intensity, concentration, label=f'Samples', color = "b", alpha=0.5)
+    
+    # Display the plot in the window
     canvas = FigureCanvasTkAgg(fig, master=results_window)
     canvas.draw()
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
