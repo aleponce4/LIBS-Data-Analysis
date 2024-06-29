@@ -6,10 +6,15 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import seaborn as sns
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Simplified import function
 def import_calibration_data(app):
-    filetypes = [("CSV files", "*.csv"), ("All files", "*.*")]
+    filetypes = [("Txt files", "*.txt"),("CSV files", "*.csv"), ("All files", "*.*")]
     file_paths = filedialog.askopenfilenames(title="Select data files", filetypes=filetypes, parent=app.root)
 
     if not file_paths:
@@ -105,22 +110,46 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     results_window.title("Calibration Results")
 
     # Plot the calibration curve
-    fig, ax = plt.subplots()
-    peak_data = element_data[element_data['wavelength'] == selected_peak['wavelength']]
-    intensities = peak_data['relative_intensity']
-    concentrations_calibration = peak_data['concentration']
-    
-    ax.scatter(intensities, concentrations_calibration, color='blue', label='Data points')
-    ax.plot(intensities, model.predict(np.array(intensities).reshape(-1, 1)), color='red', label='Linear fit')
-    ax.set_xlabel('Intensity')
-    ax.set_ylabel('Concentration')
-    ax.set_title(f'Calibration Curve for {selected_peak["wavelength"]} nm')
-    ax.legend()
-    ax.grid(True)
+    def plot_calibration_curve(element_data, selected_peak, new_data, model):
+        # Set the modern theme and colors using seaborn
+        sns.set(style="whitegrid")
+        sns.set_palette("muted")
+        
+        fig, ax = plt.subplots()
+        
+        # Calibration data
+        peak_data = element_data[element_data['wavelength'] == selected_peak['wavelength']]
+        intensities = peak_data['relative_intensity']
+        concentrations_calibration = peak_data['concentration']
+        
+        # Sample data
+        sample_intensities = new_data['intensity_rep1']  # Replace with the actual column name if different
+        sample_concentrations = model.predict(np.array(sample_intensities).reshape(-1, 1))
+        
+        # Scatter plot for calibration data
+        ax.scatter(intensities, concentrations_calibration, color='blue', label='Calibration Data')
+        
+        # Line plot for linear fit
+        ax.plot(intensities, model.predict(np.array(intensities).reshape(-1, 1)), color='red', label='Linear Fit')
+        
+        # Scatter plot for sample data
+        ax.scatter(sample_intensities, sample_concentrations, color='green', marker='x', label='Sample Data')
+        
+        # Labels and title
+        ax.set_xlabel('Intensity')
+        ax.set_ylabel('Concentration')
+        ax.set_title(f'Calibration Curve for {selected_peak["wavelength"]} nm')
+        ax.legend()
+        
+        # Add grid and improve layout
+        ax.grid(True)
+        sns.despine(trim=True)
+        
+        canvas = FigureCanvasTkAgg(fig, master=results_window)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-    canvas = FigureCanvasTkAgg(fig, master=results_window)
-    canvas.draw()
-    canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+    plot_calibration_curve(element_data, selected_peak, new_data, model)
 
     # Display calibration information
     info_frame = ttk.Frame(results_window)
@@ -148,6 +177,7 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
             tree.item(tree.get_children()[-1], tags='summary')
 
     tree.pack(fill=tk.BOTH, expand=True)
+
 
 # Main Calibration curve function
 def apply_calibration_curve(app):
