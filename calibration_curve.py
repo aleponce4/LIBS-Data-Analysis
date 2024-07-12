@@ -94,6 +94,7 @@ def calculate_concentrations(model, new_data, selected_peak):
     return results_table
 
 # Function to display all results in one window
+# Function to display all results in one window
 def display_results(element_data, selected_peak, new_data, results_table, model, r2):
     results_window = Toplevel()
     results_window.title("Calibration Results")
@@ -114,7 +115,6 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     ax.set_xlabel('Intensity')
     ax.set_ylabel('Concentration')
     ax.set_title(f'Calibration Curve for {selected_peak["wavelength"]} nm')
-    ax.legend()
     ax.grid(True)
 
     # Plot the sample data points
@@ -122,13 +122,20 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     wavelengths = new_data['wavelength']
     replicate_columns = [col for col in new_data.columns if col.startswith('intensity_rep')]
     
+    first_label = True
     for idx, rep_col in enumerate(replicate_columns, start=1):
         intensities = new_data[rep_col]
         # Find the index of the closest wavelength
         closest_idx = (np.abs(wavelengths - peak_wavelength)).idxmin()
         closest_intensity = intensities.iloc[closest_idx]
         concentration = results_table.loc[results_table['Replicate'] == f'Replicate {idx}', 'Concentration'].values[0]
-        ax.scatter(closest_intensity, concentration, label=f'Samples', color = "b", alpha=0.5)
+        if first_label:
+            ax.scatter(closest_intensity, concentration, label='Samples', color='black', alpha=0.5)
+            first_label = False
+        else:
+            ax.scatter(closest_intensity, concentration, color='black', alpha=0.5)
+    
+    ax.legend()
     
     # Display the plot in the window
     canvas = FigureCanvasTkAgg(fig, master=results_window)
@@ -149,18 +156,37 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     # Display results table
     tree_frame = ttk.Frame(results_window)
     tree_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-    
-    tree = ttk.Treeview(tree_frame, columns=("Replicate", "Concentration"), show='headings')
+
+    # Define columns
+    columns = ("Replicate", "Concentration")
+    tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
+
+    # Define headings
     tree.heading("Replicate", text="Replicate")
     tree.heading("Concentration", text="Concentration")
-    
+
+    # Format data and insert rows
     for idx, row in results_table.iterrows():
-        tree.insert("", "end", values=(row['Replicate'], row['Concentration']))
+        # Format concentration to 3 decimal points
+        formatted_concentration = f"{row['Concentration']:.3f}" if pd.notnull(row['Concentration']) else 'NaN'
+        tree.insert("", "end", values=(row['Replicate'], formatted_concentration))
         if row['Replicate'] in ['Mean', 'Std Dev', 'RSD (%)']:
             tree.tag_configure('summary', font=('Helvetica', 10, 'bold'))
             tree.item(tree.get_children()[-1], tags='summary')
 
+    # Add lines to separate replicates from summary statistics
+    tree.insert("", "end", values=("", ""))  # Add an empty row for separation
+
+    # Pack treeview
     tree.pack(fill=tk.BOTH, expand=True)
+
+    # Add a style to make the table clearer
+    style = ttk.Style()
+    style.configure("Treeview", rowheight=25)
+    style.configure("Treeview.Heading", font=('Helvetica', 12, 'bold'))
+    style.configure("Treeview", font=('Helvetica', 10))
+
+
 
 # Main Calibration curve function
 def apply_calibration_curve(app):
