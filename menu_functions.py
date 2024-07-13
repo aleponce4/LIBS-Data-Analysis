@@ -14,6 +14,12 @@ from adjust_spectrum import adjust_spectrum
 from adjust_plot import adjust_plot
 import numpy as np
 from calibration_curve import apply_calibration_curve
+import csv
+
+from adjust_spectrum import adjust_spectrum as actual_adjust_spectrum
+from adjust_plot import adjust_plot as actual_adjust_plot
+
+
 
 # Function to create acquisition buttons in the sidebar
 def create_acquisition_buttons(app):
@@ -127,9 +133,7 @@ def import_data(app):
         app.ax.set_ylabel("Relative Intensity")
         app.ax.grid(which='both', linestyle='--', linewidth=0.5)
         file_name = ", ".join(os.path.basename(path) for path in file_paths)
-        # Save the replicate data as csv to check right behaviors
-        replicate_data.to_csv("replicate_data.csv", index=False) ###
-        
+       
         update_title(app, file_name)
         app.canvas.draw()
     else:
@@ -149,11 +153,12 @@ def clean_plot(app):
 
 # Function to adjust the spectrum
 def adjust_spectrum(app, ax):
-    adjust_spectrum(app, ax)
+    actual_adjust_spectrum(app, ax)
 
 # Function to adjust the plot
 def adjust_plot(app, ax):
-    adjust_plot(app, ax)
+    actual_adjust_plot(app, ax)
+
 
 # Function to export the plot
 def export_plot(app, ax):
@@ -208,21 +213,18 @@ def export_data(app):
 # Quantitative LIBS functions
 # Function to calculate FWHM
 def calculate_fwhm(spectrum_data, peak_wavelength, peak_intensity):
-    # Find the index of the closest wavelength to the peak_wavelength
     closest_idx = (np.abs(spectrum_data['wavelength'] - peak_wavelength)).argmin()
     half_max = peak_intensity / 2
 
-    # Find left point where intensity <= half_max
     left_idx = closest_idx
-    while left_idx > 0 and spectrum_data['intensity'][left_idx] > half_max:
+    while left_idx > 0 and spectrum_data['intensity'].iloc[left_idx] > half_max:
         left_idx -= 1
 
-    # Find right point where intensity <= half_max
     right_idx = closest_idx
-    while right_idx < len(spectrum_data) - 1 and spectrum_data['intensity'][right_idx] > half_max:
+    while right_idx < len(spectrum_data) - 1 and spectrum_data['intensity'].iloc[right_idx] > half_max:
         right_idx += 1
 
-    fwhm = spectrum_data['wavelength'][right_idx] - spectrum_data['wavelength'][left_idx]
+    fwhm = spectrum_data['wavelength'].iloc[right_idx] - spectrum_data['wavelength'].iloc[left_idx]
     return fwhm
 
 # Function to calculate SNR with dynamic peak width (FWHM)
@@ -230,34 +232,53 @@ def calculate_snr(spectrum_data, peak_wavelength, peak_intensity):
     fwhm = calculate_fwhm(spectrum_data, peak_wavelength, peak_intensity)
     half_fwhm = fwhm / 2
 
-    # Define noise regions: 2*FWHM on either side of the peak
     noise_region = spectrum_data[
         ((spectrum_data['wavelength'] < peak_wavelength - half_fwhm) & (spectrum_data['wavelength'] > peak_wavelength - 2 * fwhm)) |
         ((spectrum_data['wavelength'] > peak_wavelength + half_fwhm) & (spectrum_data['wavelength'] < peak_wavelength + 2 * fwhm))
     ]
     
     noise_level = np.std(noise_region['intensity'])  # Estimate noise as the standard deviation of the noise region
-    snr = peak_intensity / noise_level if noise_level > 0 else 0
+    snr = peak_intensity / noise_level if noise_level > 0 else float('inf')
     return snr
 
 
-# Integrate into add_to_training_library function
+# Add to library function
 def add_to_training_library(app):
-    if not app.peak_data:
-        messagebox.showerror("Error", "No data found.")
+    if not hasattr(app, 'replicate_data') or app.replicate_data.empty:
+        messagebox.showerror("Error", "No replicate data found.")
         return
 
-    # Construct spectrum data DataFrame from app.x_data and app.y_data
-    spectrum_data = pd.DataFrame({
-        'wavelength': app.x_data,
-        'intensity': app.y_data
-    })
+    spectrum_data = app.replicate_data.copy()
 
-    # Convert app.peak_data to DataFrame and calculate SNR
+    # Convert app.peak_data to DataFrame
     peak_data_df = pd.DataFrame(app.peak_data, columns=["wavelength", "element_symbol", "ionization_level", "relative_intensity"])
-    peak_data_df['SNR'] = peak_data_df.apply(
-        lambda row: calculate_snr(spectrum_data, row['wavelength'], row['relative_intensity']), axis=1
-    )
+
+    # Function to find the closest wavelength
+    def find_closest_wavelength(target_wavelength):
+        return spectrum_data.iloc[(spectrum_data['Wavelength'] - target_wavelength).abs().argsort()[:1]].squeeze()
+
+    # Calculate SNR for each replicate and average them
+    def calculate_average_snr(row):
+        replicate_columns = [col for col in spectrum_data.columns if col.startswith('Intensity')]
+        
+        snrs = []
+        for col in replicate_columns:
+            closest_wavelength_row = find_closest_wavelength(row['wavelength'])
+            replicate_intensity = closest_wavelength_row[col]
+            if pd.notna(replicate_intensity):
+                snr = calculate_snr(
+                    spectrum_data[['Wavelength', col]].rename(columns={'Wavelength': 'wavelength', col: 'intensity'}),
+                    closest_wavelength_row['Wavelength'],
+                    replicate_intensity
+                )
+
+                snrs.append(snr)
+        avg_snr = np.mean(snrs) if snrs else 0
+
+        return avg_snr
+
+    peak_data_df['SNR'] = peak_data_df.apply(calculate_average_snr, axis=1)
+
 
     # Create a new window
     window = Toplevel(app.root)
@@ -313,7 +334,7 @@ def add_to_training_library(app):
             check_vars.append(check_var)
             ttk.Checkbutton(inner_frame, variable=check_var).grid(row=idx + 1, column=0, sticky="w")
             ttk.Label(inner_frame, text=row['wavelength']).grid(row=idx + 1, column=1)
-            ttk.Label(inner_frame, text=row['relative_intensity']).grid(row=idx + 1, column=2)
+            ttk.Label(inner_frame, text=f"{row['relative_intensity']:.1f}").grid(row=idx + 1, column=2)
             ttk.Label(inner_frame, text=f"{row['SNR']:.2f}").grid(row=idx + 1, column=3, padx=(20, 5))
 
         inner_frame.update_idletasks()
@@ -338,19 +359,27 @@ def add_to_training_library(app):
         selected_element = element_var.get()
         for i, check_var in enumerate(check_vars):
             if check_var.get():
-                row = peak_data_df[(peak_data_df['element_symbol'] == selected_element)].iloc[i]
-                selected_peaks.append([row['wavelength'], selected_element, row['ionization_level'], row['relative_intensity'], concentration_var.get(), units_var.get()])
+                element_data = peak_data_df[peak_data_df['element_symbol'] == selected_element]
+                for idx, row in element_data.iterrows():
+                    selected_peaks.append([
+                        row['wavelength'], selected_element, row['ionization_level'],
+                        row['relative_intensity'], concentration_var.get(), units_var.get()
+                    ])
 
-        # Save to CSV
+        # Save each peak entry individually to the CSV
         library_file = "calibration_data_library.csv"
-        df = pd.DataFrame(selected_peaks, columns=["wavelength", "element_symbol", "ionization_level", "relative_intensity", "concentration", "units"])
-        if os.path.exists(library_file):
-            df.to_csv(library_file, mode='a', header=False, index=False)
-        else:
-            df.to_csv(library_file, mode='w', header=True, index=False)
-        
+        with open(library_file, 'a', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            # Write header only if the file does not exist or is empty
+            if not os.path.exists(library_file) or os.path.getsize(library_file) == 0:
+                csv_writer.writerow(["wavelength", "element_symbol", "ionization_level", "relative_intensity", "concentration", "units"])
+            for peak in selected_peaks:
+                csv_writer.writerow(peak)
+
         messagebox.showinfo("Success", "Data added to training library successfully.")
         window.destroy()
+
+
 
     # Save button
     save_button = ttk.Button(window, text="Save", command=save_to_library)
@@ -358,6 +387,9 @@ def add_to_training_library(app):
 
     # Initialize the peaks table
     update_peaks_table()
+
+
+
 
 
 

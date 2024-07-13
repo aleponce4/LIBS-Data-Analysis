@@ -40,6 +40,7 @@ def import_calibration_data(app):
         messagebox.showerror("Error", "No data imported.")
         return None
 
+
 # Function to calculate linearity
 def calculate_linearity(intensities, concentrations):
     model = LinearRegression()
@@ -48,6 +49,7 @@ def calculate_linearity(intensities, concentrations):
     model.fit(intensities, concentrations)
     r2 = model.score(intensities, concentrations)
     return r2, model
+
 
 # Function to find the closest peak intensity within tolerance
 def find_peak_intensity(wavelengths, intensities, target_wavelength, tolerance):
@@ -93,7 +95,7 @@ def calculate_concentrations(model, new_data, selected_peak):
 
     return results_table
 
-# Function to display all results in one window
+
 # Function to display all results in one window
 def display_results(element_data, selected_peak, new_data, results_table, model, r2):
     results_window = Toplevel()
@@ -107,9 +109,11 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     intensities = peak_data['relative_intensity']
     concentrations_calibration = peak_data['concentration']
     
-    # Scatterplot for calibration data and linear fit
-    ax.scatter(intensities, concentrations_calibration, label='Calibration Data', alpha=0.5, color="b")
-    ax.plot(intensities, model.predict(np.array(intensities).reshape(-1, 1)), label='Linear Fit', color="r")
+    # Scatterplot for calibration data with error bars and linear fit
+    mean_intensities = intensities.groupby(peak_data['concentration']).mean()
+    std_intensities = intensities.groupby(peak_data['concentration']).std()
+    ax.errorbar(mean_intensities.index, mean_intensities, yerr=std_intensities, fmt='o', label='Calibration Data', alpha=0.5, color="b")
+    ax.plot(mean_intensities.index, model.predict(mean_intensities.values.reshape(-1, 1)), label='Linear Fit', color="r")
     
     # Labels and title
     ax.set_xlabel('Intensity')
@@ -186,8 +190,6 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     style.configure("Treeview.Heading", font=('Helvetica', 12, 'bold'))
     style.configure("Treeview", font=('Helvetica', 10))
 
-
-
 # Main Calibration curve function
 def apply_calibration_curve(app):
     # Import new data for calibration curve
@@ -237,6 +239,9 @@ def apply_calibration_curve(app):
         # Frame for table and checkboxes
         peaks_frame = ttk.Frame(linearity_window)
         peaks_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+
+        # Create canvas to hold checkboxes and treeview
+        canvas
 
         # Create canvas to hold checkboxes and treeview
         canvas = tk.Canvas(peaks_frame)
