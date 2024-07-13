@@ -26,9 +26,7 @@ def on_resize(event, canvas):
 # Create the graph space
 def create_graph_space(app):
     graph_frame = tk.Frame(app.root)
-    graph_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=(150, 0))
-
-
+    graph_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=(300, 0))
     
     # Create the figure and axes
     fig, ax = plt.subplots(figsize=(14, 8))  # Increase the height of the graph space
