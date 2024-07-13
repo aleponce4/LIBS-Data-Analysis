@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import style
+import statsmodels.api as sm
 plt.style.use('seaborn-whitegrid')
 
 
@@ -43,17 +44,29 @@ def import_calibration_data(app):
         return None
 
 
-
-
-# Function to calculate linearity
+# Function to calculate linearity with confidence intervals
 def calculate_linearity(intensities, concentrations):
-    model = LinearRegression()
-    intensities = np.array(intensities).reshape(-1, 1)
-    concentrations = np.array(concentrations)
-    model.fit(intensities, concentrations)
-    r2 = model.score(intensities, concentrations)
-    print(f"Regression Model Coefficients: {model.coef_}, Intercept: {model.intercept_}, R²: {r2}")
-    return r2, model
+    intensities = pd.Series(intensities)  # Convert intensities to a Pandas Series
+    concentrations = pd.Series(concentrations)  # Convert concentrations to a Pandas Series
+
+    # Ensure that we have the same unique concentration values
+    unique_concentrations = concentrations.unique()
+    
+    mean_intensities = intensities.groupby(concentrations).mean()
+    std_intensities = intensities.groupby(concentrations).std()
+
+    mean_intensities = mean_intensities.loc[unique_concentrations].values.reshape(-1, 1)
+    std_intensities = std_intensities.loc[unique_concentrations].values
+
+    model = sm.OLS(unique_concentrations, sm.add_constant(mean_intensities)).fit()
+    r2 = model.rsquared
+
+    # Calculate confidence intervals for mean intensities
+    predictions = model.get_prediction(sm.add_constant(mean_intensities))
+    prediction_summary = predictions.summary_frame(alpha=0.05)
+    
+    return r2, model, prediction_summary, mean_intensities, std_intensities
+
 
 
 # Function to find the closest peak intensity within tolerance
@@ -67,7 +80,7 @@ def find_peak_intensity(wavelengths, intensities, target_wavelength, tolerance):
 # Use the calibration equation to calculate concentrations
 def calculate_concentrations(model, new_data, selected_peak):
     peak_wavelength = selected_peak['wavelength']
-    tolerance = 0.2  # Define a tolerance for peak matching
+    tolerance = 0.5  # Define a tolerance for peak matching
 
     # Extract wavelengths from the new data
     wavelengths = new_data['wavelength']
@@ -78,7 +91,9 @@ def calculate_concentrations(model, new_data, selected_peak):
         intensities = new_data[rep_col]
         peak_intensity = find_peak_intensity(wavelengths, intensities, peak_wavelength, tolerance)
         if peak_intensity is not None:
-            concentration = round(model.predict(np.array([[peak_intensity]]))[0], 2)
+            # Ensure the input includes the constant term
+            prediction_input = np.array([[1, peak_intensity]])  # Adding the constant term explicitly
+            concentration = round(model.predict(prediction_input)[0], 2)
             results.append((f'Replicate {idx}', concentration))
         else:
             results.append((f'Replicate {idx}', np.nan))  # Mark as NaN if no peak found
@@ -100,39 +115,50 @@ def calculate_concentrations(model, new_data, selected_peak):
 
     return results_table
 
-
 # Function to display all results in one window
-def display_results(element_data, selected_peak, new_data, results_table, model, r2):
+def display_results(element_data, selected_peak, new_data, results_table, model, r2, prediction_summary, mean_intensities, std_intensities):
     results_window = Toplevel()
     results_window.title("Calibration Results")
 
+    # Plot the calibration curve
     fig, ax = plt.subplots()
 
     # Calibration data
     peak_data = element_data[element_data['wavelength'] == selected_peak['wavelength']]
-    intensities = peak_data['relative_intensity']
-    concentrations_calibration = peak_data['concentration']
+    concentrations_calibration = peak_data['concentration'].unique()
 
-    print(f"Columns in peak_data before grouping: {peak_data.columns}")
-
-    # Calculate mean and std for each concentration
-    grouped = peak_data.groupby('concentration')['relative_intensity']
-    mean_intensities = grouped.mean()
-    std_intensities = grouped.std()
-
-    print(f"Mean Intensities: {mean_intensities}")
+    print(f"Mean Intensities: {mean_intensities.flatten()}")
     print(f"Std Intensities: {std_intensities}")
 
-    ax.errorbar(mean_intensities.index, mean_intensities, yerr=std_intensities, fmt='o', label='Calibration Data', alpha=0.5, color="b")
-    ax.plot(mean_intensities.index, model.predict(mean_intensities.values.reshape(-1, 1)), label='Linear Fit', color="r")
+    # Ensure that the correct values are used for plotting
+    ax.scatter(mean_intensities.flatten(), concentrations_calibration, label='Calibration Data', alpha=0.5, color="b")
+    ax.plot(mean_intensities.flatten(), model.predict(sm.add_constant(mean_intensities)), label='Linear Fit', color="b")
+    print(f"Calibration Data Points: {list(zip(mean_intensities.flatten(), concentrations_calibration, std_intensities))}")
 
-    print(f"Calibration Data Points: {list(zip(mean_intensities.index, mean_intensities, std_intensities))}")
+    # Print shapes to debug the fill_between issue
+    print(f"mean_intensities.shape: {mean_intensities.shape}")
+    print(f"prediction_summary['mean_ci_lower'].shape: {prediction_summary['mean_ci_lower'].shape}")
+    print(f"prediction_summary['mean_ci_upper'].shape: {prediction_summary['mean_ci_upper'].shape}")
 
+    # Ensure consistent lengths
+    if len(mean_intensities.flatten()) == len(prediction_summary['mean_ci_lower']):
+        # Plot confidence bands with transparency
+        ax.fill_between(
+            mean_intensities.flatten(),
+            prediction_summary['mean_ci_lower'],
+            prediction_summary['mean_ci_upper'],
+            color='b',
+            alpha=0.3,  # Adding transparency
+            label='Confidence Interval'
+        )
+
+    # Labels and title
     ax.set_xlabel('Intensity')
     ax.set_ylabel('Concentration')
     ax.set_title(f'Calibration Curve for {selected_peak["wavelength"]} nm')
     ax.grid(True)
 
+    # Plot the sample data points
     peak_wavelength = selected_peak['wavelength']
     wavelengths = new_data['wavelength']
     replicate_columns = [col for col in new_data.columns if col.startswith('intensity_rep')]
@@ -140,6 +166,7 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     first_label = True
     for idx, rep_col in enumerate(replicate_columns, start=1):
         intensities = new_data[rep_col]
+        # Find the index of the closest wavelength
         closest_idx = (np.abs(wavelengths - peak_wavelength)).idxmin()
         closest_intensity = intensities.iloc[closest_idx]
         concentration = results_table.loc[results_table['Replicate'] == f'Replicate {idx}', 'Concentration'].values[0]
@@ -152,51 +179,64 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
 
     ax.legend()
 
+    # Display the plot in the window
     canvas = FigureCanvasTkAgg(fig, master=results_window)
     canvas.draw()
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
+    # Display calibration information
     info_frame = ttk.Frame(results_window)
     info_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
 
-    slope = model.coef_[0]
-    intercept = model.intercept_
+    slope = model.params[1]
+    intercept = model.params[0]
 
     ttk.Label(info_frame, text=f"Slope: {slope:.4f}").grid(row=0, column=0, padx=5, pady=5)
     ttk.Label(info_frame, text=f"Intercept: {intercept:.4f}").grid(row=1, column=0, padx=5, pady=5)
     ttk.Label(info_frame, text=f"R²: {r2:.4f}").grid(row=2, column=0, padx=5, pady=5)
 
+    # Display results table
     tree_frame = ttk.Frame(results_window)
     tree_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+    # Define columns
     columns = ("Replicate", "Concentration")
     tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
 
+    # Define headings
     tree.heading("Replicate", text="Replicate")
     tree.heading("Concentration", text="Concentration")
 
+    # Format data and insert rows
     for idx, row in results_table.iterrows():
+        # Format concentration to 3 decimal points
         formatted_concentration = f"{row['Concentration']:.3f}" if pd.notnull(row['Concentration']) else 'NaN'
         tree.insert("", "end", values=(row['Replicate'], formatted_concentration))
         if row['Replicate'] in ['Mean', 'Std Dev', 'RSD (%)']:
             tree.tag_configure('summary', font=('Helvetica', 10, 'bold'))
             tree.item(tree.get_children()[-1], tags='summary')
 
-    tree.insert("", "end", values=("", ""))
+    # Add lines to separate replicates from summary statistics
+    tree.insert("", "end", values=("", ""))  # Add an empty row for separation
 
+    # Pack treeview
     tree.pack(fill=tk.BOTH, expand=True)
 
+    # Add a style to make the table clearer
     style = ttk.Style()
     style.configure("Treeview", rowheight=25)
     style.configure("Treeview.Heading", font=('Helvetica', 12, 'bold'))
     style.configure("Treeview", font=('Helvetica', 10))
 
+
 # Main Calibration curve function
 def apply_calibration_curve(app):
+    # Import new data for calibration curve
     new_data = import_calibration_data(app)
     if new_data is None:
         return
 
+    # Read the calibration data
     calibration_file = "calibration_data_library.csv"
     if not os.path.exists(calibration_file):
         messagebox.showerror("Error", "Calibration data library not found.")
@@ -205,6 +245,7 @@ def apply_calibration_curve(app):
     calibration_data = pd.read_csv(calibration_file)
     print(f"Columns in calibration_data: {calibration_data.columns}")
 
+    # Ask user to select an element
     element_window = Toplevel(app.root)
     element_window.title("Select Element for Calibration")
 
@@ -214,6 +255,7 @@ def apply_calibration_curve(app):
     element_dropdown['values'] = sorted(set(calibration_data['element_symbol']))
     element_dropdown.grid(row=0, column=1, padx=5, pady=5)
 
+    # Function to proceed with the selected element
     def proceed():
         selected_element = element_var.get()
         element_data = calibration_data[calibration_data['element_symbol'] == selected_element]
@@ -228,7 +270,7 @@ def apply_calibration_curve(app):
             intensities = peak_data['relative_intensity']
             concentrations = peak_data['concentration']
             print(f"Peak Data for wavelength {peak}: {peak_data}")
-            r2, model = calculate_linearity(intensities, concentrations)
+            r2, model, prediction_summary, mean_intensities, std_intensities = calculate_linearity(intensities, concentrations)
             linearity_data.append([peak, r2])
 
         linearity_df = pd.DataFrame(linearity_data, columns=["wavelength", "r2"])
@@ -279,7 +321,7 @@ def apply_calibration_curve(app):
                 messagebox.showinfo("Selected Peak", f"Selected peak: {selected_peak['wavelength']} nm with R²: {selected_peak['r2']:.4f}")
 
                 results_table = calculate_concentrations(model, new_data, selected_peak)
-                display_results(element_data, selected_peak, new_data, results_table, model, selected_peak['r2'])
+                display_results(element_data, selected_peak, new_data, results_table, model, selected_peak['r2'], prediction_summary, mean_intensities, std_intensities)
 
             linearity_window.destroy()
 
@@ -290,4 +332,3 @@ def apply_calibration_curve(app):
     proceed_button.grid(row=1, column=0, columnspan=2, pady=10)
 
     element_window.mainloop()
-

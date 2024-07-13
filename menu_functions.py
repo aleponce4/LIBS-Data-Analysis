@@ -357,14 +357,19 @@ def add_to_training_library(app):
     def save_to_library():
         selected_peaks = []
         selected_element = element_var.get()
+
+        # Get element data for the selected element
+        element_data = peak_data_df[peak_data_df['element_symbol'] == selected_element]
+
+        # Iterate over check_vars to find which peaks are selected
         for i, check_var in enumerate(check_vars):
             if check_var.get():
-                element_data = peak_data_df[peak_data_df['element_symbol'] == selected_element]
-                for idx, row in element_data.iterrows():
-                    selected_peaks.append([
-                        row['wavelength'], selected_element, row['ionization_level'],
-                        row['relative_intensity'], concentration_var.get(), units_var.get()
-                    ])
+                # Append data for each selected peak
+                row = element_data.iloc[i]
+                selected_peaks.append([
+                    row['wavelength'], selected_element, row['ionization_level'],
+                    row['relative_intensity'], concentration_var.get(), units_var.get()
+                ])
 
         # Save each peak entry individually to the CSV
         library_file = "calibration_data_library.csv"
@@ -378,7 +383,6 @@ def add_to_training_library(app):
 
         messagebox.showinfo("Success", "Data added to training library successfully.")
         window.destroy()
-
 
 
     # Save button
