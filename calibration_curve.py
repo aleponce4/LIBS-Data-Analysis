@@ -49,7 +49,6 @@ def calculate_linearity(intensities, concentrations):
     intensities = pd.Series(intensities)  # Convert intensities to a Pandas Series
     concentrations = pd.Series(concentrations)  # Convert concentrations to a Pandas Series
 
-    # Ensure that we have the same unique concentration values
     unique_concentrations = concentrations.unique()
     
     mean_intensities = intensities.groupby(concentrations).mean()
@@ -61,9 +60,9 @@ def calculate_linearity(intensities, concentrations):
     model = sm.OLS(unique_concentrations, sm.add_constant(mean_intensities)).fit()
     r2 = model.rsquared
 
-    # Calculate confidence intervals for mean intensities
+    # Calculate confidence intervals for mean intensities with tighter intervals (increase alpha)
     predictions = model.get_prediction(sm.add_constant(mean_intensities))
-    prediction_summary = predictions.summary_frame(alpha=0.05)
+    prediction_summary = predictions.summary_frame(alpha=0.25)  # Adjusted alpha for narrower intervals
     
     return r2, model, prediction_summary, mean_intensities, std_intensities
 
@@ -116,46 +115,46 @@ def calculate_concentrations(model, new_data, selected_peak):
     return results_table
 
 # Function to display all results in one window
-def display_results(element_data, selected_peak, new_data, results_table, model, r2, prediction_summary, mean_intensities, std_intensities):
+def display_results(element_data, selected_peak, new_data, results_table, model, r2, prediction_summary, mean_intensities, std_intensities, selected_element):
     results_window = Toplevel()
     results_window.title("Calibration Results")
+    results_window.geometry("1200x800")
 
     # Plot the calibration curve
     fig, ax = plt.subplots()
+    fig.subplots_adjust(right=0.7)
 
     # Calibration data
     peak_data = element_data[element_data['wavelength'] == selected_peak['wavelength']]
-    concentrations_calibration = peak_data['concentration'].unique()
+    concentrations_calibration = peak_data['concentration']
 
     print(f"Mean Intensities: {mean_intensities.flatten()}")
     print(f"Std Intensities: {std_intensities}")
 
     # Ensure that the correct values are used for plotting
-    ax.scatter(mean_intensities.flatten(), concentrations_calibration, label='Calibration Data', alpha=0.5, color="b")
-    ax.plot(mean_intensities.flatten(), model.predict(sm.add_constant(mean_intensities)), label='Linear Fit', color="b")
-    print(f"Calibration Data Points: {list(zip(mean_intensities.flatten(), concentrations_calibration, std_intensities))}")
+    ax.scatter(mean_intensities.flatten(), concentrations_calibration.unique(), label='Calibration Data', alpha=0.5, color="b")
+    ax.plot(mean_intensities.flatten(), model.predict(sm.add_constant(mean_intensities)), label='Linear Fit', color="steelblue")
+    print(f"Calibration Data Points: {list(zip(mean_intensities.flatten(), concentrations_calibration.unique(), std_intensities))}")
 
     # Print shapes to debug the fill_between issue
     print(f"mean_intensities.shape: {mean_intensities.shape}")
     print(f"prediction_summary['mean_ci_lower'].shape: {prediction_summary['mean_ci_lower'].shape}")
     print(f"prediction_summary['mean_ci_upper'].shape: {prediction_summary['mean_ci_upper'].shape}")
 
-    # Ensure consistent lengths
-    if len(mean_intensities.flatten()) == len(prediction_summary['mean_ci_lower']):
-        # Plot confidence bands with transparency
-        ax.fill_between(
-            mean_intensities.flatten(),
-            prediction_summary['mean_ci_lower'],
-            prediction_summary['mean_ci_upper'],
-            color='b',
-            alpha=0.3,  # Adding transparency
-            label='Confidence Interval'
-        )
+    # Plot confidence bands with transparency
+    ax.fill_between(
+        mean_intensities.flatten(),
+        prediction_summary['mean_ci_lower'],
+        prediction_summary['mean_ci_upper'],
+        color='lightblue',
+        alpha=0.3,  # Adding transparency
+        label='Confidence Interval'
+    )
 
     # Labels and title
     ax.set_xlabel('Intensity')
     ax.set_ylabel('Concentration')
-    ax.set_title(f'Calibration Curve for {selected_peak["wavelength"]} nm')
+    ax.set_title(f'Calibration Curve for {selected_peak["wavelength"]} nm - {selected_element}')
     ax.grid(True)
 
     # Plot the sample data points
@@ -177,7 +176,7 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
         else:
             ax.scatter(closest_intensity, concentration, color='black', alpha=0.5)
 
-    ax.legend()
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     # Display the plot in the window
     canvas = FigureCanvasTkAgg(fig, master=results_window)
@@ -321,7 +320,7 @@ def apply_calibration_curve(app):
                 messagebox.showinfo("Selected Peak", f"Selected peak: {selected_peak['wavelength']} nm with R²: {selected_peak['r2']:.4f}")
 
                 results_table = calculate_concentrations(model, new_data, selected_peak)
-                display_results(element_data, selected_peak, new_data, results_table, model, selected_peak['r2'], prediction_summary, mean_intensities, std_intensities)
+                display_results(element_data, selected_peak, new_data, results_table, model, selected_peak['r2'], prediction_summary, mean_intensities, std_intensities, selected_element)
 
             linearity_window.destroy()
 
