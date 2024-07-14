@@ -103,7 +103,7 @@ def find_peak_intensity(wavelengths, intensities, target_wavelength, tolerance):
 # Use the calibration equation to calculate concentrations
 def calculate_concentrations(model, new_data, selected_peak):
     peak_wavelength = selected_peak['wavelength']
-    tolerance = 0.5  # Define a tolerance for peak matching
+    tolerance = 0.2  # Define a tolerance for peak matching
 
     # Extract wavelengths from the new data
     wavelengths = new_data['wavelength']
