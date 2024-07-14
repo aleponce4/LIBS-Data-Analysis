@@ -7,13 +7,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import style
+import matplotlib.ticker as ticker
 import statsmodels.api as sm
 plt.style.use('seaborn-whitegrid')
 
 
 # Simplified import function
 def import_calibration_data(app):
-    filetypes = [("Txt files", "*.txt"), ("CSV files", "*.csv"), ("All files", "*.*")]
+    filetypes = [("Txt files", "*.txt"),("CSV files", "*.csv"), ("All files", "*.*")]
     file_paths = filedialog.askopenfilenames(title="Select data files", filetypes=filetypes, parent=app.root)
 
     if not file_paths:
@@ -69,6 +70,9 @@ def calculate_linearity(intensities, concentrations):
     intensities = pd.Series(intensities)  # Convert intensities to a Pandas Series
     concentrations = pd.Series(concentrations)  # Convert concentrations to a Pandas Series
 
+    if len(concentrations.unique()) < 2:
+        raise ValueError("Insufficient data points for regression")
+
     unique_concentrations = concentrations.unique()
     
     mean_intensities = intensities.groupby(concentrations).mean()
@@ -82,7 +86,7 @@ def calculate_linearity(intensities, concentrations):
 
     # Calculate confidence intervals for mean intensities with tighter intervals (increase alpha)
     predictions = model.get_prediction(sm.add_constant(mean_intensities))
-    prediction_summary = predictions.summary_frame(alpha=0.25)  # Adjusted alpha for narrower intervals
+    prediction_summary = predictions.summary_frame(alpha=0.05)  # Adjusted alpha for narrower intervals
     
     return r2, model, prediction_summary, mean_intensities, std_intensities
 
@@ -134,6 +138,7 @@ def calculate_concentrations(model, new_data, selected_peak):
 
     return results_table
 
+
 # Function to display all results in one window
 def display_results(element_data, selected_peak, new_data, results_table, model, r2, prediction_summary, mean_intensities, std_intensities, selected_element):
     results_window = Toplevel()
@@ -176,6 +181,12 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     ax.set_ylabel('Concentration')
     ax.set_title(f'Calibration Curve for {selected_peak["wavelength"]} nm - {selected_element}')
     ax.grid(True)
+
+    # Set x-axis to scientific notation
+    formatter = ticker.ScalarFormatter(useMathText=True)
+    formatter.set_scientific(True)
+    formatter.set_powerlimits((-2, 2))  # Adjust power limits as needed
+    ax.xaxis.set_major_formatter(formatter)
 
     # Plot the sample data points
     peak_wavelength = selected_peak['wavelength']
@@ -247,7 +258,6 @@ def display_results(element_data, selected_peak, new_data, results_table, model,
     style.configure("Treeview.Heading", font=('Helvetica', 12, 'bold'))
     style.configure("Treeview", font=('Helvetica', 10))
 
-
 # Main Calibration curve function
 def apply_calibration_curve(app):
     # Import new data for calibration curve
@@ -274,7 +284,6 @@ def apply_calibration_curve(app):
     element_dropdown['values'] = sorted(set(calibration_data['element_symbol']))
     element_dropdown.grid(row=0, column=1, padx=5, pady=5)
 
-    # Function to proceed with the selected element
     def proceed():
         selected_element = element_var.get()
         element_data = calibration_data[calibration_data['element_symbol'] == selected_element]
@@ -288,6 +297,12 @@ def apply_calibration_curve(app):
             peak_data = element_data[element_data['wavelength'] == peak]
             intensities = peak_data['relative_intensity']
             concentrations = peak_data['concentration']
+
+            # Skip peaks with insufficient data points
+            if len(concentrations.unique()) < 2:
+                print(f"Skipping peak {peak} due to insufficient data points for regression")
+                continue
+
             print(f"Peak Data for wavelength {peak}: {peak_data}")
             r2, model, prediction_summary, mean_intensities, std_intensities = calculate_linearity(intensities, concentrations)
             linearity_data.append([peak, r2])
@@ -329,7 +344,6 @@ def apply_calibration_curve(app):
         inner_frame.update_idletasks()
         canvas.config(scrollregion=canvas.bbox("all"))
 
-        # Function to save the selected peak
         def save_selected_peak():
             selected_peak = None
             for i, check_var in enumerate(check_vars):
@@ -339,8 +353,10 @@ def apply_calibration_curve(app):
             if selected_peak is not None:
                 messagebox.showinfo("Selected Peak", f"Selected peak: {selected_peak['wavelength']} nm with R²: {selected_peak['r2']:.4f}")
 
+                # Filter the element data to use only the selected peak
+                peak_data = element_data[element_data['wavelength'] == selected_peak['wavelength']]
                 results_table = calculate_concentrations(model, new_data, selected_peak)
-                display_results(element_data, selected_peak, new_data, results_table, model, selected_peak['r2'], prediction_summary, mean_intensities, std_intensities, selected_element)
+                display_results(peak_data, selected_peak, new_data, results_table, model, selected_peak['r2'], prediction_summary, mean_intensities, std_intensities, selected_element)
 
             linearity_window.destroy()
 
