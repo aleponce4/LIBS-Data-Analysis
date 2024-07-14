@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\Alex\Desktop\LIBS_changes\LIBS-Data-Analysis\LIBS_venv"
+VIRTUAL_ENV="C:\Users\manju\OneDrive\Escritorio\LIBS-Data-Analysis\LIBS_venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

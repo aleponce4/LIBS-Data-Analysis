@@ -22,13 +22,32 @@ def import_calibration_data(app):
     all_data = pd.DataFrame()
     for idx, path in enumerate(file_paths):
         with open(path, 'r') as file:
-            file_content = file.read()
-
-        decimal_separator = ',' if ',' in file_content and '.' not in file_content else '.'
-        delimiter = '\t' if '\t' in file_content else ','
-        data = pd.read_csv(path, sep=delimiter, engine='python', header=None, decimal=decimal_separator, skiprows=1)
-        data.columns = ['wavelength'] + [f'intensity_rep{idx+1}']
+            file_content = file.read().strip()  # Remove leading/trailing whitespace
         
+        print(f"First few lines of file {idx+1} content:\n{file_content.splitlines()[:5]}")
+
+        # Detect decimal separator and delimiter
+        decimal_separator = ',' if ',' in file_content and '.' not in file_content else '.'
+        if '\t' in file_content:
+            delimiter = '\t'
+        elif ',' in file_content:
+            delimiter = ','
+        else:
+            delimiter = '\s+'  # Handle whitespace-delimited data
+
+        # Read the data into a DataFrame, skipping the first row if it contains metadata
+        data = pd.read_csv(path, sep=delimiter, engine='python', header=None, decimal=decimal_separator, skiprows=1)
+
+        # Handle potential extra columns
+        if data.shape[1] > 2:
+            print(f"Warning: More than 2 columns detected in file {path}. Trimming to the first two columns.")
+            data = data.iloc[:, :2]
+
+        if data.shape[1] == 2:
+            data.columns = ['wavelength', f'intensity_rep{idx+1}']
+        else:
+            raise ValueError(f"Expected 2 columns but got {data.shape[1]} in file: {path}")
+
         if all_data.empty:
             all_data = data
         else:
@@ -42,6 +61,7 @@ def import_calibration_data(app):
     else:
         messagebox.showerror("Error", "No data imported.")
         return None
+
 
 
 # Function to calculate linearity with confidence intervals

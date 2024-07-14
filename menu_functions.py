@@ -95,31 +95,41 @@ def import_data(app):
     filetypes = [("Text files", "*.txt"), ("All files", "*.*")]
     file_paths = filedialog.askopenfilenames(title="Select data files", filetypes=filetypes)
 
+    if not file_paths:
+        return None
+
     all_data = pd.DataFrame()
     replicate_data = pd.DataFrame()
+
     for i, path in enumerate(file_paths):
         with open(path, 'r') as file:
             file_content = file.read()
 
         decimal_separator = ',' if ',' in file_content and '.' not in file_content else '.'
-        delimiter = '\t' if '\t' in file_content else ','
+        delimiter = '\t' if '\t' in file_content else '\s+'  # Handle whitespace delimited data
+        # Read data while skipping the first line
         data = pd.read_csv(path, sep=delimiter, engine='python', header=None, decimal=decimal_separator, skiprows=1)
+
+        # Ensure to pick only the first two columns
+        data = data.iloc[:, :2]
         
+        # Rename columns for the data
+        data.columns = ['Wavelength', f'Intensity_{i+1}']
+
         # Append to the all_data DataFrame for averaging
         all_data = pd.concat([all_data, data], axis=0)
-        
+
         # Store the intensity values as separate columns in replicate_data
         if replicate_data.empty:
             replicate_data = data.copy()
-            replicate_data.columns = ['Wavelength', f'Intensity_{i+1}']
         else:
-            temp_df = data.copy()
-            temp_df.columns = ['Wavelength', f'Intensity_{i+1}']
-            replicate_data = pd.merge(replicate_data, temp_df, on='Wavelength', how='outer')
+            replicate_data = pd.merge(replicate_data, data, on='Wavelength', how='outer')
+
+        print(f"Columns after importing file {i+1}: {replicate_data.columns}")
 
     if not all_data.empty:
-        averaged_data = all_data.groupby(0).mean().reset_index()
-        app.x_data, app.y_data = averaged_data[0], averaged_data[1]
+        averaged_data = all_data.groupby('Wavelength').mean().reset_index()
+        app.x_data, app.y_data = averaged_data['Wavelength'], averaged_data.iloc[:, 1:].mean(axis=1)
         app.data = averaged_data
         
         # Store the replicate data in app for other parts of the code
@@ -140,6 +150,8 @@ def import_data(app):
         app.x_data, app.y_data = pd.Series(), pd.Series()
         app.ax.clear()
         app.canvas.draw()
+
+
 
 
 # Function to clean the plot
