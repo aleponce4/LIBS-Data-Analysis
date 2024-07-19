@@ -1,4 +1,4 @@
-#!C:\Users\manju\OneDrive\Escritorio\LIBS-Data-Analysis\LIBS_venv\Scripts\python.exe
+#!C:\Users\Alex\Desktop\LIBS_changes\LIBS-Data-Analysis\LIBS_venv\Scripts\python.exe
 # -*- coding: utf-8 -*-
 #
 # Description
