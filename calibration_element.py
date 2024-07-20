@@ -220,22 +220,28 @@ def calibration_table_window(app, callback):
         element_df['Wavelength'] = pd.to_numeric(element_df['Wavelength'], errors='coerce')
         element_df['Ionization Level'] = pd.to_numeric(element_df['Ionization Level'], errors='coerce')  # Convert Ionization Level to numeric
         element_peaks = element_df[element_df['Symbol'] == selected_element]
-        element_peaks = element_peaks[element_peaks['Ionization Level'] <= 2]
+        element_peaks = element_peaks[element_peaks['Ionization Level'] <= 3]  # Assuming ionization levels are 1, 2, or 3
         element_peaks_wavelengths = element_peaks['Wavelength'].dropna().values
+
 
         # Find closest matching wavelengths
         processed_wavelengths = app.data['Wavelength'].values
-        matched_wavelengths = [find_closest_wavelength(w, processed_wavelengths) for w in element_peaks_wavelengths]
+        matched_peaks = []
+        for w in element_peaks_wavelengths:
+            closest_wavelength = find_closest_wavelength(w, processed_wavelengths)
+            ionization_level = element_peaks[element_peaks['Wavelength'] == w]['Ionization Level'].values[0]
+            matched_peaks.append((closest_wavelength, ionization_level))
 
         # Prepare the data to save
         calibration_data = []
-        for wavelength in matched_wavelengths:
+        for closest_wavelength, ionization_level in matched_peaks:
             for col in app.data.columns[1:]:
-                intensity = app.data.loc[app.data['Wavelength'] == wavelength, col].values[0]
-                row = [wavelength, selected_element, 1, intensity, concentration, units]  # Assume Ionization Level is 1
+                intensity = app.data.loc[app.data['Wavelength'] == closest_wavelength, col].values[0]
+                row = [closest_wavelength, selected_element, ionization_level, intensity, concentration, units]
                 calibration_data.append(row)
         
         calibration_df = pd.DataFrame(calibration_data, columns=['wavelength', 'element_symbol', 'ionization_level', 'relative_intensity', 'concentration', 'units'])
+
 
         # Save the data to calibration_data_library.csv
         file_path = 'calibration_data_library.csv'
@@ -245,8 +251,8 @@ def calibration_table_window(app, callback):
             calibration_df.to_csv(file_path, mode='w', header=True, index=False)
 
         # Callback with the selected element, concentration, units, and matched wavelengths
-        callback(selected_element, concentration, units, matched_wavelengths)
-        
+        callback(selected_element, concentration, units, [peak[0] for peak in matched_peaks])
+            
         periodic_window.destroy()
 
     # Input fields for concentration and units

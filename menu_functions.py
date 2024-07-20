@@ -7,19 +7,16 @@ from tkinter import messagebox
 import pandas as pd
 import functools
 from PIL import Image, ImageTk
-from search_element import search_element, periodic_table_window
-from graph_space import update_title
 import graph_space
 import numpy as np
+import csv
 from adjust_spectrum import adjust_spectrum
 from adjust_plot import adjust_plot
-import numpy as np
-import csv
 from adjust_spectrum import adjust_spectrum as actual_adjust_spectrum
 from adjust_plot import adjust_plot as actual_adjust_plot
 from calibration_element import calibration_table_window
-from calibration_curve import process_data
-
+from search_element import search_element, periodic_table_window
+from graph_space import update_title
 
 
 # Function to create acquisition buttons in the sidebar
@@ -286,7 +283,7 @@ def apply_calibration_curve(app):
     # Load available elements from calibration_data_library.csv
     try:
         calibration_df = pd.read_csv('calibration_data_library.csv')
-        available_elements = calibration_df['element_symbol'].unique()
+        available_elements = calibration_df['element_symbol'].unique().tolist()
     except FileNotFoundError:
         messagebox.showerror("Error", "Calibration data library not found.")
         return
@@ -294,7 +291,7 @@ def apply_calibration_curve(app):
     # Create a new Toplevel window for element selection
     selection_window = tk.Toplevel(app.root)
     selection_window.title("Select Element for Calibration")
-    selection_window.geometry("300x200")
+    selection_window.geometry("400x600")
 
     # Label for dropdown
     label = ttk.Label(selection_window, text="Select Element:")
@@ -305,6 +302,37 @@ def apply_calibration_curve(app):
     dropdown = ttk.Combobox(selection_window, textvariable=selected_element, values=available_elements)
     dropdown.pack(pady=10)
 
+    # Frame for treeview and next button
+    frame = ttk.Frame(selection_window)
+    frame.pack(pady=10, fill=tk.BOTH, expand=True)
+
+    # Treeview for displaying available concentrations and units
+    columns = ('Concentration', 'Units')
+    tree = ttk.Treeview(frame, columns=columns, show='headings')
+    tree.heading('Concentration', text='Concentration')
+    tree.heading('Units', text='Units')
+    tree.pack(pady=10, fill=tk.BOTH, expand=True)
+
+    def update_table(event):
+        element = selected_element.get()
+        if not element:
+            return
+        # Filter the calibration data for the selected element
+        element_data = calibration_df[calibration_df['element_symbol'] == element]
+        concentrations = element_data['concentration'].unique()
+        units = element_data['units'].unique()
+
+        # Clear the previous data in the treeview
+        for item in tree.get_children():
+            tree.delete(item)
+
+        # Insert new data into the treeview
+        for concentration in concentrations:
+            unit = element_data[element_data['concentration'] == concentration]['units'].iloc[0]
+            tree.insert('', tk.END, values=(concentration, unit))
+
+    dropdown.bind("<<ComboboxSelected>>", update_table)
+
     def on_next():
         element = selected_element.get()
         if not element:
@@ -312,7 +340,6 @@ def apply_calibration_curve(app):
             return
         
         # Proceed to next steps in calibration_curve.py
-        # Ensure that the selected element and imported data are accessible
         selection_window.destroy()
         app.selected_element = element
         proceed_with_calibration(app)
