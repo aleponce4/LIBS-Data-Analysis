@@ -1,4 +1,5 @@
 # calibration_element.py searches for peak_values for the calirbation curve and returns the peak_values for the selected element.
+import os
 import tkinter as tk
 from tkinter import ttk
 from ttkthemes import ThemedTk
@@ -6,12 +7,18 @@ import sv_ttk
 from tkinter import Toplevel
 import csv
 from tkinter import messagebox
-import pandas as pd
 import label_peaks
 from ttkthemes import ThemedTk, ThemedStyle
 from label_peaks import label_peaks
 import markdown
 from tkhtmlview import HTMLLabel
+import pandas as pd
+import numpy as np
+from scipy.sparse import diags, eye
+import scipy.sparse.linalg as splinalg
+from sklearn.preprocessing import MinMaxScaler
+from scipy.signal import savgol_filter
+from tkinter import messagebox
 
 # ================================================================================================
 # Colors for each group
@@ -143,12 +150,52 @@ def calibration_table_window(app, callback):
 
     # Create a separate frame at the bottom for concentration and units
     input_frame = ttk.Frame(periodic_window)
-    input_frame.grid(row=11, column=0, columnspan=18, pady=20)  # Adjust row and columnspan as needed
+    input_frame.grid(row=12, column=0, columnspan=18, pady=20)  # Adjust row and columnspan as needed
 
     # Variables to store concentration and units
     concentration_var = tk.StringVar()
     units_var = tk.StringVar()
 
+    # Function for baseline correction using asymmetric least squares smoothing with sparse matrices and regularization
+    def baseline_correction(y, lam=1e5, p=0.01, niter=10, eps=1e-6):
+        L = len(y)
+        D = diags([1, -2, 1], [0, 1, 2], shape=(L-2, L)).tocsc()
+        H = lam * (D.T @ D)
+        w = np.ones(L)
+        for i in range(niter):
+            W = diags(w, 0).tocsc()
+            try:
+                Z = splinalg.spsolve(W + H + eps * eye(L), W @ y)
+            except splinalg.ArpackNoConvergence:
+                return y  # Return original data in case of error
+            w = p * (y > Z) + (1 - p) * (y < Z)
+        return Z
+
+    # Function for preprocessing a single spectrum
+    def preprocess_spectrum(df, window_length=11, polyorder=2, baseline_lambda=1e5, baseline_p=0.01, baseline_niter=10, eps=1e-6):
+        df_preprocessed = df.copy()
+        for col in df.columns[1:]:
+            y = df[col].values
+            baseline = baseline_correction(y, lam=baseline_lambda, p=baseline_p, niter=baseline_niter, eps=eps)
+            corrected = y - baseline
+            smoothed = savgol_filter(corrected, window_length, polyorder)
+            df_preprocessed[col] = smoothed
+        return df_preprocessed
+
+    # Function to normalize the data
+    def normalize_data(df):
+        df_normalized = df.copy()
+        scaler = MinMaxScaler()
+        for col in df.columns[1:]:
+            df_normalized[col] = scaler.fit_transform(df[[col]])
+        return df_normalized
+
+    # Function to find the closest wavelength in the processed data
+    def find_closest_wavelength(wavelength, data_wavelengths):
+        index = np.abs(data_wavelengths - wavelength).argmin()
+        return data_wavelengths[index]
+
+    # Function to handle the submit button
     def on_submit():
         if not selected_elements:
             messagebox.showerror("Error", "Please select an element.")
@@ -160,8 +207,47 @@ def calibration_table_window(app, callback):
             messagebox.showerror("Error", "Please enter the units.")
             return
 
-        callback(selected_elements[0], concentration_var.get(), units_var.get())  # Pass the first selected element
-        periodic_window.destroy()  # Close the window
+        selected_element = selected_elements[0]
+        concentration = concentration_var.get()
+        units = units_var.get()
+        
+        # Preprocess the data
+        app.data = preprocess_spectrum(app.data)
+        app.data = normalize_data(app.data)
+
+        # Load the element database
+        element_df = pd.read_csv('element_database.csv')
+        element_df['Wavelength'] = pd.to_numeric(element_df['Wavelength'], errors='coerce')
+        element_df['Ionization Level'] = pd.to_numeric(element_df['Ionization Level'], errors='coerce')  # Convert Ionization Level to numeric
+        element_peaks = element_df[element_df['Symbol'] == selected_element]
+        element_peaks = element_peaks[element_peaks['Ionization Level'] <= 2]
+        element_peaks_wavelengths = element_peaks['Wavelength'].dropna().values
+
+        # Find closest matching wavelengths
+        processed_wavelengths = app.data['Wavelength'].values
+        matched_wavelengths = [find_closest_wavelength(w, processed_wavelengths) for w in element_peaks_wavelengths]
+
+        # Prepare the data to save
+        calibration_data = []
+        for wavelength in matched_wavelengths:
+            for col in app.data.columns[1:]:
+                intensity = app.data.loc[app.data['Wavelength'] == wavelength, col].values[0]
+                row = [wavelength, selected_element, 1, intensity, concentration, units]  # Assume Ionization Level is 1
+                calibration_data.append(row)
+        
+        calibration_df = pd.DataFrame(calibration_data, columns=['wavelength', 'element_symbol', 'ionization_level', 'relative_intensity', 'concentration', 'units'])
+
+        # Save the data to calibration_data_library.csv
+        file_path = 'calibration_data_library.csv'
+        if os.path.exists(file_path):
+            calibration_df.to_csv(file_path, mode='a', header=False, index=False)
+        else:
+            calibration_df.to_csv(file_path, mode='w', header=True, index=False)
+
+        # Callback with the selected element, concentration, units, and matched wavelengths
+        callback(selected_element, concentration, units, matched_wavelengths)
+        
+        periodic_window.destroy()
 
     # Input fields for concentration and units
     ttk.Label(input_frame, text="Concentration:").grid(row=0, column=0, padx=5, pady=5)

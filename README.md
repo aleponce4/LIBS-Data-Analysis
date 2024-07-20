@@ -23,7 +23,7 @@ A standalone Windows application for Laser Induced Breakdown Spectroscopy (LIBS)
 
 The software is provided as a standalone executable for Windows. No installation or prerequisites are required.
 
-[Download the compiled software here.](https://drive.google.com/file/d/1c5NeZRBENvAI_3m6_p_59oTXo19JTgpS/view?usp=drive_link)
+[Download the compiled software here.]# (https://drive.google.com/file/d/1c5NeZRBENvAI_3m6_p_59oTXo19JTgpS/view?usp=drive_link)
 
 ### From Source
 
