@@ -43,7 +43,6 @@ def create_sidebar(app):
     app.root.sidebar_frame = ttk.Frame(app.root, width=280)
     app.root.sidebar_frame.place(x=0, y=0, width=280, relheight=1)
 
-    # Create a new frame to hold the buttons and labels
     buttons_frame = ttk.LabelFrame(app.root.sidebar_frame)
     buttons_frame.grid(row=1, column=0, padx=30, pady=2)
 
@@ -66,7 +65,6 @@ def create_sidebar(app):
         ("Clean Plot", "Icons/clean_icon.png", functools.partial(clean_plot, app)),
     ]
 
-
     icon_size = (40, 40)
     for i, (text, icon_path, command) in enumerate(icons):
         icon_image = Image.open(icon_path).resize(icon_size, Image.ANTIALIAS)
@@ -85,13 +83,13 @@ def create_sidebar(app):
     logo_frame.place(x=0, rely=1.0, y=-new_height, anchor='sw', height=new_height, width=200)
     logo_frame.grid(row=60, column=0, padx=(10, 1), pady=(140, 5))
 
-# Function to reset data
+# Reset data function
 def reset_data(app):
     app.data = pd.DataFrame()
     app.x_data = pd.Series()
     app.y_data = pd.Series()
 
-# Function to import data from files
+# Import data function
 def import_data(app):
     reset_data(app)
     filetypes = [("Text files", "*.txt"), ("All files", "*.*")]
@@ -131,8 +129,6 @@ def import_data(app):
         # Set the intensity values within the red laser peak range to 0
         data.loc[red_laser_mask, f'Intensity_{i + 1}'] = 0
 
-        
-        
         # Append to the all_data DataFrame for averaging
         all_data = pd.concat([all_data, data], axis=0)
 
@@ -141,9 +137,6 @@ def import_data(app):
             replicate_data = data.copy()
         else:
             replicate_data = pd.merge(replicate_data, data, on='Wavelength', how='outer')
-
-        print(f"Columns after importing file {i + 1}: {replicate_data.columns}")
-
 
     if not all_data.empty:
         averaged_data = all_data.groupby('Wavelength').mean().reset_index()
@@ -245,113 +238,21 @@ def export_data(app):
 
 ########################################################################################################################
 
-# Quantitative LIBS functions
-def import_calibration_data():
-    filetypes = [("Text files", "*.txt"), ("CSV files", "*.csv"), ("All files", "*.*")]
-    file_paths = filedialog.askopenfilenames(title="Select data files", filetypes=filetypes)
-
-    if not file_paths:
-        return None
-
-    all_data = pd.DataFrame()
-    for idx, path in enumerate(file_paths):
-        with open(path, 'r') as file:
-            file_content = file.read().strip()  # Remove leading/trailing whitespace
-
-        # Detect decimal separator and delimiter
-        decimal_separator = ',' if ',' in file_content and '.' not in file_content else '.'
-        if '\t' in file_content:
-            delimiter = '\t'
-        elif ',' in file_content:
-            delimiter = ','
-        else:
-            delimiter = '\s+'  # Handle whitespace-delimited data
-
-        # Read the data into a DataFrame, skipping the first row if it contains metadata
-        data = pd.read_csv(path, sep=delimiter, engine='python', header=None, decimal=decimal_separator, skiprows=1)
-
-        # Handle potential extra columns
-        if data.shape[1] > 2:
-            data = data.iloc[:, :2]
-
-        if data.shape[1] == 2:
-            data.columns = ['wavelength', f'intensity_rep{idx+1}']
-        else:
-            raise ValueError(f"Expected 2 columns but got {data.shape[1]} in file: {path}")
-
-        if all_data.empty:
-            all_data = data
-        else:
-            all_data = pd.merge(all_data, data, on='wavelength', how='outer')
-
-    if not all_data.empty:
-        return all_data
-    else:
-        messagebox.showerror("Error", "No data imported.")
-        return None
 
 # Function to add to training library
 def add_to_training_library(app):
+    # Function to handle selected element from the periodic table window
     def handle_selected_element(selected_element, concentration, units):
         app.selected_element = selected_element
         app.concentration = concentration
         app.units = units
 
-        # Import calibration data
-        calibration_data = import_calibration_data()
-        if calibration_data is None:
-            return  # Ensure to return if no data is imported
+        # No further actions needed after closing the periodic table window
 
-        # Call the function to process data and write it to file
-        process_data(selected_element, concentration, units, calibration_data)
-
-        # Continue with the rest of the process after selecting the element
-        data_window = Toplevel(app.root)
-        data_window.title(f"Select Peaks for {selected_element}")
-
-        # Show the data in a table with checkboxes to select peaks
-        peaks_frame = ttk.Frame(data_window)
-        peaks_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
-
-        tree = ttk.Treeview(peaks_frame, columns=("wavelength", *calibration_data.columns[1:]), show='headings')
-        tree.heading("wavelength", text="Wavelength (nm)")
-        for col in calibration_data.columns[1:]:
-            tree.heading(col, text=col)
-
-        for idx, row in calibration_data.iterrows():
-            values = list(row)
-            tree.insert("", "end", values=values)
-
-        tree.pack(side="left", fill="y")
-
-        scrollbar = ttk.Scrollbar(peaks_frame, orient="vertical", command=tree.yview)
-        scrollbar.pack(side="right", fill="y")
-        tree.configure(yscrollcommand=scrollbar.set)
-
-        selected_peaks = []
-
-        def select_peak():
-            selected_peaks.clear()
-            for item in tree.selection():
-                item_text = tree.item(item, "values")
-                selected_peaks.append(item_text)
-
-        select_button = ttk.Button(data_window, text="Select Peaks", command=select_peak)
-        select_button.grid(row=1, column=0, padx=5, pady=5)
-
-        def save_peaks():
-            library_file = "calibration_data_library.csv"
-            selected_peaks_df = pd.DataFrame(selected_peaks, columns=["wavelength", *calibration_data.columns[1:]])
-            if os.path.exists(library_file):
-                selected_peaks_df.to_csv(library_file, mode='a', header=False, index=False)
-            else:
-                selected_peaks_df.to_csv(library_file, mode='w', header=True, index=False)
-
-            messagebox.showinfo("Success", "Data added to training library successfully.")
-            data_window.destroy()
-
-        save_button = ttk.Button(data_window, text="Save Peaks", command=save_peaks)
-        save_button.grid(row=2, column=0, padx=5, pady=5)
+    # Check if data is available in app.data
+    if app.data.empty:
+        messagebox.showerror("Error", "No data available. Please import data first.")
+        return
 
     # Open the periodic table window
     calibration_table_window(app, handle_selected_element)

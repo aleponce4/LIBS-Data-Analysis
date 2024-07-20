@@ -55,8 +55,6 @@ ELEMENTS = [
 #Unknown:
 ("Mt", "Meitnerium", 109, 8, 6, "unknown"), ("Ds", "Darmstadtium", 110, 9, 6, "unknown"), ("Rg", "Roentgenium", 111, 10, 6, "unknown"), ("Cn", "Copernicium", 112, 11, 6, "unknown"), ("Nh", "Nihonium", 113, 12, 6, "unknown"), ("Fl", "Flerovium", 114, 13, 6, "unknown"), ("Mc", "Moscovium", 115, 14, 6, "unknown"), ("Lv", "Livermorium", 116, 15, 6, "unknown"), ("Ts", "Tennessine", 117, 16, 6, "unknown"), ("Og", "Oganesson", 118, 17, 6, "unknown")]
                                                            
-# Create a new window
-# Create a new window for the periodic table with additional fields
 def calibration_table_window(app, callback):
     # Create a new Toplevel instance for the periodic table window
     periodic_window = Toplevel(app.root)
@@ -162,10 +160,8 @@ def calibration_table_window(app, callback):
             messagebox.showerror("Error", "Please enter the units.")
             return
 
-        # Ensure the callback is called before destroying the window
-        callback(selected_elements[0], concentration_var.get(), units_var.get())
-        calibration_table_window.destroy()  # Close the window
-
+        callback(selected_elements[0], concentration_var.get(), units_var.get())  # Pass the first selected element
+        periodic_window.destroy()  # Close the window
 
     # Input fields for concentration and units
     ttk.Label(input_frame, text="Concentration:").grid(row=0, column=0, padx=5, pady=5)
