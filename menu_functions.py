@@ -1,3 +1,4 @@
+# menu_functions.py contains functions that are used to create the sidebar menu and the acquisition buttons in the sidebar.
 import os
 import tkinter as tk
 from tkinter import Toplevel, filedialog
@@ -15,9 +16,10 @@ from adjust_plot import adjust_plot
 import numpy as np
 from calibration_curve import apply_calibration_curve
 import csv
-
 from adjust_spectrum import adjust_spectrum as actual_adjust_spectrum
 from adjust_plot import adjust_plot as actual_adjust_plot
+from calibration_element import calibration_table_window
+from calibration_curve import process_data
 
 
 
@@ -103,19 +105,34 @@ def import_data(app):
 
     for i, path in enumerate(file_paths):
         with open(path, 'r') as file:
-            file_content = file.read()
+            lines = file.readlines()
 
-        decimal_separator = ',' if ',' in file_content and '.' not in file_content else '.'
-        delimiter = '\t' if '\t' in file_content else '\s+'  # Handle whitespace delimited data
-        # Read data while skipping the first line
-        data = pd.read_csv(path, sep=delimiter, engine='python', header=None, decimal=decimal_separator, skiprows=1)
+        # Identify the start of the spectral data
+        start_index = next((index for index, line in enumerate(lines) if ">>>>>Begin Spectral Data<<<<<" in line), None)
+        if start_index is None:
+            continue  # Skip files that don't have the expected format
+
+        # Read the data from the identified start index
+        data = pd.read_csv(path, sep='\t', engine='python', header=None, decimal='.', skiprows=start_index + 1)
 
         # Ensure to pick only the first two columns
         data = data.iloc[:, :2]
-        
-        # Rename columns for the data
-        data.columns = ['Wavelength', f'Intensity_{i+1}']
 
+        # Rename columns for the data
+        data.columns = ['Wavelength', f'Intensity_{i + 1}']
+
+        # Flatten the part of the spectrum associated with the red laser peak
+        lower_bound = 653.616
+        upper_bound = 656.055
+
+        # Create a mask for the red laser peak range
+        red_laser_mask = (data['Wavelength'] >= lower_bound) & (data['Wavelength'] <= upper_bound)
+
+        # Set the intensity values within the red laser peak range to 0
+        data.loc[red_laser_mask, f'Intensity_{i + 1}'] = 0
+
+        
+        
         # Append to the all_data DataFrame for averaging
         all_data = pd.concat([all_data, data], axis=0)
 
@@ -125,13 +142,14 @@ def import_data(app):
         else:
             replicate_data = pd.merge(replicate_data, data, on='Wavelength', how='outer')
 
-        print(f"Columns after importing file {i+1}: {replicate_data.columns}")
+        print(f"Columns after importing file {i + 1}: {replicate_data.columns}")
+
 
     if not all_data.empty:
         averaged_data = all_data.groupby('Wavelength').mean().reset_index()
         app.x_data, app.y_data = averaged_data['Wavelength'], averaged_data.iloc[:, 1:].mean(axis=1)
         app.data = averaged_data
-        
+
         # Store the replicate data in app for other parts of the code
         app.replicate_data = replicate_data
 
@@ -142,15 +160,20 @@ def import_data(app):
         app.ax.set_xlabel("Wavelength (nm)")
         app.ax.set_ylabel("Relative Intensity")
         app.ax.grid(which='both', linestyle='--', linewidth=0.5)
-        file_name = ", ".join(os.path.basename(path) for path in file_paths)
-       
+
+        # Determine the title
+        if len(file_paths) > 1:
+            file_name = "Averaged Data"
+        else:
+            file_name = os.path.basename(file_paths[0])
+
         update_title(app, file_name)
         app.canvas.draw()
+
     else:
         app.x_data, app.y_data = pd.Series(), pd.Series()
         app.ax.clear()
         app.canvas.draw()
-
 
 
 
@@ -223,188 +246,115 @@ def export_data(app):
 ########################################################################################################################
 
 # Quantitative LIBS functions
-# Function to calculate FWHM
-def calculate_fwhm(spectrum_data, peak_wavelength, peak_intensity):
-    closest_idx = (np.abs(spectrum_data['wavelength'] - peak_wavelength)).argmin()
-    half_max = peak_intensity / 2
+def import_calibration_data():
+    filetypes = [("Text files", "*.txt"), ("CSV files", "*.csv"), ("All files", "*.*")]
+    file_paths = filedialog.askopenfilenames(title="Select data files", filetypes=filetypes)
 
-    left_idx = closest_idx
-    while left_idx > 0 and spectrum_data['intensity'].iloc[left_idx] > half_max:
-        left_idx -= 1
+    if not file_paths:
+        return None
 
-    right_idx = closest_idx
-    while right_idx < len(spectrum_data) - 1 and spectrum_data['intensity'].iloc[right_idx] > half_max:
-        right_idx += 1
+    all_data = pd.DataFrame()
+    for idx, path in enumerate(file_paths):
+        with open(path, 'r') as file:
+            file_content = file.read().strip()  # Remove leading/trailing whitespace
 
-    fwhm = spectrum_data['wavelength'].iloc[right_idx] - spectrum_data['wavelength'].iloc[left_idx]
-    return fwhm
+        # Detect decimal separator and delimiter
+        decimal_separator = ',' if ',' in file_content and '.' not in file_content else '.'
+        if '\t' in file_content:
+            delimiter = '\t'
+        elif ',' in file_content:
+            delimiter = ','
+        else:
+            delimiter = '\s+'  # Handle whitespace-delimited data
 
-# Function to calculate SNR with dynamic peak width (FWHM)
-def calculate_snr(spectrum_data, peak_wavelength, peak_intensity):
-    fwhm = calculate_fwhm(spectrum_data, peak_wavelength, peak_intensity)
-    half_fwhm = fwhm / 2
+        # Read the data into a DataFrame, skipping the first row if it contains metadata
+        data = pd.read_csv(path, sep=delimiter, engine='python', header=None, decimal=decimal_separator, skiprows=1)
 
-    noise_region = spectrum_data[
-        ((spectrum_data['wavelength'] < peak_wavelength - half_fwhm) & (spectrum_data['wavelength'] > peak_wavelength - 2 * fwhm)) |
-        ((spectrum_data['wavelength'] > peak_wavelength + half_fwhm) & (spectrum_data['wavelength'] < peak_wavelength + 2 * fwhm))
-    ]
-    
-    noise_level = np.std(noise_region['intensity'])  # Estimate noise as the standard deviation of the noise region
-    snr = peak_intensity / noise_level if noise_level > 0 else float('inf')
-    return snr
+        # Handle potential extra columns
+        if data.shape[1] > 2:
+            data = data.iloc[:, :2]
 
+        if data.shape[1] == 2:
+            data.columns = ['wavelength', f'intensity_rep{idx+1}']
+        else:
+            raise ValueError(f"Expected 2 columns but got {data.shape[1]} in file: {path}")
 
-# Add to library function
+        if all_data.empty:
+            all_data = data
+        else:
+            all_data = pd.merge(all_data, data, on='wavelength', how='outer')
+
+    if not all_data.empty:
+        return all_data
+    else:
+        messagebox.showerror("Error", "No data imported.")
+        return None
+
+# Function to add to training library
 def add_to_training_library(app):
-    if not hasattr(app, 'replicate_data') or app.replicate_data.empty:
-        messagebox.showerror("Error", "No replicate data found.")
-        return
+    def handle_selected_element(selected_element, concentration, units):
+        app.selected_element = selected_element
+        app.concentration = concentration
+        app.units = units
 
-    spectrum_data = app.replicate_data.copy()
+        # Import calibration data
+        calibration_data = import_calibration_data()
+        if calibration_data is None:
+            return  # Ensure to return if no data is imported
 
-    # Convert app.peak_data to DataFrame
-    peak_data_df = pd.DataFrame(app.peak_data, columns=["wavelength", "element_symbol", "ionization_level", "relative_intensity"])
+        # Call the function to process data and write it to file
+        process_data(selected_element, concentration, units, calibration_data)
 
-    # Function to find the closest wavelength
-    def find_closest_wavelength(target_wavelength):
-        return spectrum_data.iloc[(spectrum_data['Wavelength'] - target_wavelength).abs().argsort()[:1]].squeeze()
+        # Continue with the rest of the process after selecting the element
+        data_window = Toplevel(app.root)
+        data_window.title(f"Select Peaks for {selected_element}")
 
-    # Calculate SNR for each replicate and average them
-    def calculate_average_snr(row):
-        replicate_columns = [col for col in spectrum_data.columns if col.startswith('Intensity')]
-        
-        snrs = []
-        for col in replicate_columns:
-            closest_wavelength_row = find_closest_wavelength(row['wavelength'])
-            replicate_intensity = closest_wavelength_row[col]
-            if pd.notna(replicate_intensity):
-                snr = calculate_snr(
-                    spectrum_data[['Wavelength', col]].rename(columns={'Wavelength': 'wavelength', col: 'intensity'}),
-                    closest_wavelength_row['Wavelength'],
-                    replicate_intensity
-                )
+        # Show the data in a table with checkboxes to select peaks
+        peaks_frame = ttk.Frame(data_window)
+        peaks_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
 
-                snrs.append(snr)
-        avg_snr = np.mean(snrs) if snrs else 0
+        tree = ttk.Treeview(peaks_frame, columns=("wavelength", *calibration_data.columns[1:]), show='headings')
+        tree.heading("wavelength", text="Wavelength (nm)")
+        for col in calibration_data.columns[1:]:
+            tree.heading(col, text=col)
 
-        return avg_snr
+        for idx, row in calibration_data.iterrows():
+            values = list(row)
+            tree.insert("", "end", values=values)
 
-    peak_data_df['SNR'] = peak_data_df.apply(calculate_average_snr, axis=1)
+        tree.pack(side="left", fill="y")
 
+        scrollbar = ttk.Scrollbar(peaks_frame, orient="vertical", command=tree.yview)
+        scrollbar.pack(side="right", fill="y")
+        tree.configure(yscrollcommand=scrollbar.set)
 
-    # Create a new window
-    window = Toplevel(app.root)
-    window.title("Add to Training Library")
-
-    # Dropdown for selecting element
-    ttk.Label(window, text="Select Element:").grid(row=0, column=0, padx=5, pady=5)
-    element_var = tk.StringVar()
-    element_dropdown = ttk.Combobox(window, textvariable=element_var)
-    element_dropdown['values'] = sorted(set(peak_data_df['element_symbol']))
-    element_dropdown.grid(row=0, column=1, padx=5, pady=5)
-
-    # Frame for table and checkboxes
-    peaks_frame = ttk.Frame(window)
-    peaks_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
-
-    # Create canvas to hold checkboxes and treeview
-    canvas = tk.Canvas(peaks_frame)
-    canvas.grid(row=0, column=0, sticky="nsew")
-
-    # Scrollbars for the canvas
-    scrollbar_y = ttk.Scrollbar(peaks_frame, orient='vertical', command=canvas.yview)
-    scrollbar_y.grid(row=0, column=1, sticky='ns')
-    scrollbar_x = ttk.Scrollbar(peaks_frame, orient='horizontal', command=canvas.xview)
-    scrollbar_x.grid(row=1, column=0, sticky='ew')
-
-    canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
-
-    # Create a frame inside the canvas
-    inner_frame = ttk.Frame(canvas)
-    canvas.create_window((0, 0), window=inner_frame, anchor="nw")
-
-    # Create a list to store the BooleanVars
-    check_vars = []
-
-    # Add header labels with padding for SNR column
-    ttk.Label(inner_frame, text="Select", font=('Helvetica', 10, 'bold')).grid(row=0, column=0, padx=5, pady=5)
-    ttk.Label(inner_frame, text="Wavelength (nm)", font=('Helvetica', 10, 'bold')).grid(row=0, column=1, padx=5, pady=5)
-    ttk.Label(inner_frame, text="Intensity", font=('Helvetica', 10, 'bold')).grid(row=0, column=2, padx=5, pady=5)
-    ttk.Label(inner_frame, text="SNR", font=('Helvetica', 10, 'bold')).grid(row=0, column=3, padx=(20, 5), pady=5)
-
-    # Function to update the table when an element is selected
-    def update_peaks_table(*args):
-        for widget in inner_frame.winfo_children()[4:]:  # Keep the header labels
-            widget.destroy()
-        check_vars.clear()
-
-        selected_element = element_var.get()
-        element_data = peak_data_df[peak_data_df['element_symbol'] == selected_element]
-
-        for idx, row in element_data.iterrows():
-            check_var = tk.BooleanVar()
-            check_vars.append(check_var)
-            ttk.Checkbutton(inner_frame, variable=check_var).grid(row=idx + 1, column=0, sticky="w")
-            ttk.Label(inner_frame, text=row['wavelength']).grid(row=idx + 1, column=1)
-            ttk.Label(inner_frame, text=f"{row['relative_intensity']:.1f}").grid(row=idx + 1, column=2)
-            ttk.Label(inner_frame, text=f"{row['SNR']:.2f}").grid(row=idx + 1, column=3, padx=(20, 5))
-
-        inner_frame.update_idletasks()
-        canvas.config(scrollregion=canvas.bbox("all"))
-
-    element_var.trace('w', update_peaks_table)
-
-    # Input fields for concentration and units
-    ttk.Label(window, text="Concentration:").grid(row=2, column=0, padx=5, pady=5)
-    concentration_var = tk.StringVar()
-    concentration_entry = ttk.Entry(window, textvariable=concentration_var)
-    concentration_entry.grid(row=2, column=1, padx=5, pady=5)
-
-    ttk.Label(window, text="Units:").grid(row=3, column=0, padx=5, pady=5)
-    units_var = tk.StringVar()
-    units_entry = ttk.Entry(window, textvariable=units_var)
-    units_entry.grid(row=3, column=1, padx=5, pady=5)
-
-    # Function to save selected data to CSV
-    def save_to_library():
         selected_peaks = []
-        selected_element = element_var.get()
 
-        # Get element data for the selected element
-        element_data = peak_data_df[peak_data_df['element_symbol'] == selected_element]
+        def select_peak():
+            selected_peaks.clear()
+            for item in tree.selection():
+                item_text = tree.item(item, "values")
+                selected_peaks.append(item_text)
 
-        # Iterate over check_vars to find which peaks are selected
-        for i, check_var in enumerate(check_vars):
-            if check_var.get():
-                # Append data for each selected peak
-                row = element_data.iloc[i]
-                selected_peaks.append([
-                    row['wavelength'], selected_element, row['ionization_level'],
-                    row['relative_intensity'], concentration_var.get(), units_var.get()
-                ])
+        select_button = ttk.Button(data_window, text="Select Peaks", command=select_peak)
+        select_button.grid(row=1, column=0, padx=5, pady=5)
 
-        # Save each peak entry individually to the CSV
-        library_file = "calibration_data_library.csv"
-        with open(library_file, 'a', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile)
-            # Write header only if the file does not exist or is empty
-            if not os.path.exists(library_file) or os.path.getsize(library_file) == 0:
-                csv_writer.writerow(["wavelength", "element_symbol", "ionization_level", "relative_intensity", "concentration", "units"])
-            for peak in selected_peaks:
-                csv_writer.writerow(peak)
+        def save_peaks():
+            library_file = "calibration_data_library.csv"
+            selected_peaks_df = pd.DataFrame(selected_peaks, columns=["wavelength", *calibration_data.columns[1:]])
+            if os.path.exists(library_file):
+                selected_peaks_df.to_csv(library_file, mode='a', header=False, index=False)
+            else:
+                selected_peaks_df.to_csv(library_file, mode='w', header=True, index=False)
 
-        messagebox.showinfo("Success", "Data added to training library successfully.")
-        window.destroy()
+            messagebox.showinfo("Success", "Data added to training library successfully.")
+            data_window.destroy()
 
+        save_button = ttk.Button(data_window, text="Save Peaks", command=save_peaks)
+        save_button.grid(row=2, column=0, padx=5, pady=5)
 
-    # Save button
-    save_button = ttk.Button(window, text="Save", command=save_to_library)
-    save_button.grid(row=4, column=0, columnspan=2, pady=10)
-
-    # Initialize the peaks table
-    update_peaks_table()
-
-
+    # Open the periodic table window
+    calibration_table_window(app, handle_selected_element)
 
 
 
