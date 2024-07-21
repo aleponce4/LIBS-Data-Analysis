@@ -1,18 +1,16 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score, mean_squared_error
-import tkinter as tk
+from sklearn.metrics import r2_score
 from tkinter import Toplevel, ttk, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import seaborn as sns
 from scipy.signal import savgol_filter
 from scipy.sparse import diags, eye
 from scipy.sparse import linalg as splinalg
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.ensemble import GradientBoostingRegressor
 
-
-########## Determine best model for calibration curve
 def process_calibration(app):
     selected_element = app.selected_element
     replicate_data = app.replicate_data
@@ -31,42 +29,35 @@ def process_calibration(app):
         messagebox.showerror("Error", f"No calibration data found for element {selected_element}.")
         return
 
-    # Initialize variables to track the best fit
-    best_r2 = -np.inf
-    best_wavelength = None
-    best_slope = None
+    # Add a unique identifier for each replicate to handle duplicates
+    element_data['replicate_id'] = element_data.groupby(['concentration', 'wavelength']).cumcount()
 
-    # Get unique wavelengths for the selected element
-    unique_wavelengths = element_data['wavelength'].unique()
+    # Prepare the data for regression
+    intensity_matrix = element_data.pivot(index=['concentration', 'replicate_id'], columns='wavelength', values='relative_intensity').fillna(0)
 
-    # Function to perform linear regression and calculate R2
-    def perform_linear_regression(concentrations, intensities):
-        A = np.hstack([concentrations, np.ones_like(concentrations)])
-        coeffs, _, _, _ = np.linalg.lstsq(A, intensities, rcond=None)
-        slope = coeffs[0]
-        intercept = coeffs[1]
-        predictions = A @ coeffs
-        r2 = r2_score(intensities, predictions)
-        return slope, r2
+    # Extract the concentration values
+    concentration_values = intensity_matrix.index.get_level_values('concentration').astype(float).values
 
-    for wavelength in unique_wavelengths:
-        wavelength_data = element_data[element_data['wavelength'] == wavelength]
-        concentrations = wavelength_data['concentration'].astype(float).values.reshape(-1, 1)
-        intensities = wavelength_data['relative_intensity'].astype(float).values
-        
-        # Perform linear regression and calculate R2
-        slope, r2 = perform_linear_regression(concentrations, intensities)
-        
-        # Update the best fit if the current one is better and the slope is positive
-        if r2 > best_r2:
-            best_r2 = r2
-            best_wavelength = wavelength
-            best_slope = slope
-
-    if best_wavelength is None:
-        messagebox.showerror("Error", "No suitable peak found for calibration.")
+    # Ensure consistent lengths
+    if intensity_matrix.shape[0] != len(concentration_values):
+        messagebox.showerror("Error", "Inconsistent data lengths between concentrations and intensity matrix.")
         return
-    
+
+    intensity_matrix_values = intensity_matrix.values
+
+    # Standardize the data
+    scaler = StandardScaler()
+    intensity_matrix_scaled = scaler.fit_transform(intensity_matrix_values)
+
+    # Perform Gradient Boosting Regression
+    gb = GradientBoostingRegressor(n_estimators=100, random_state=42)
+    gb.fit(intensity_matrix_scaled, concentration_values)
+    predictions = gb.predict(intensity_matrix_scaled)
+    r2 = r2_score(concentration_values, predictions)
+
+    print(f'Gradient Boosting Model R2: {r2:.3f}')
+
+
 
     ###### Predicting Concentrations ######
     # Preprocessing functions
@@ -105,72 +96,88 @@ def process_calibration(app):
     replicate_data = preprocess_spectrum(replicate_data)
     replicate_data = normalize_data(replicate_data)
 
-    # Select intensities for the best peak
-    intensities = replicate_data[replicate_data['Wavelength'] == best_wavelength].iloc[:, 1:].values.flatten()
+    # Align the wavelengths between calibration and prediction datasets
+    common_wavelengths = intensity_matrix.columns.intersection(replicate_data['Wavelength'])
 
-    # Get concentrations from the calibration data
-    concentrations = element_data[element_data['wavelength'] == best_wavelength]['concentration'].astype(float).values
+    intensity_matrix = intensity_matrix[common_wavelengths]
+    replicate_data = replicate_data[replicate_data['Wavelength'].isin(common_wavelengths)]
 
-    # Perform linear regression
-    concentrations = concentrations.reshape(-1, 1)
-    model = LinearRegression()
-    model.fit(concentrations, intensities)
-    predictions = model.predict(concentrations)
-    r2 = r2_score(intensities, predictions)
-    slope = model.coef_[0]
-    intercept = model.intercept_
+    # Melt the replicate_data DataFrame to long format
+    replicate_data_melted = replicate_data.melt(id_vars=['Wavelength'], var_name='Sample', value_name='Intensity')
 
+    # Print the columns of replicate_data for debugging
+    print("Columns in replicate_data_melted:", replicate_data_melted.columns)
 
-    ###### Plotting and Report ######
-    # Create a new window for displaying the plot and table
+    # Pivot the melted DataFrame
+    replicate_intensity_matrix = replicate_data_melted.pivot(index='Wavelength', columns='Sample', values='Intensity').fillna(0).values
+
+    # Standardize the replicate intensity matrix
+    replicate_intensity_matrix_scaled = scaler.transform(replicate_intensity_matrix.T)
+    predicted_concentrations = gb.predict(replicate_intensity_matrix_scaled)
+
+    # Plotting and Showing Results
     result_window = Toplevel(app.root)
     result_window.title("Calibration Results")
-    result_window.geometry("1200x800")
+    result_window.geometry("800x600")
 
-    # Create a figure for the plot
     fig, ax = plt.subplots()
 
     # Plot calibration points and regression line
-    ax.scatter(concentrations, intensities, color='blue', label='Calibration Points')
-    ax.plot(concentrations, predictions, color='red', label=f'Fit Line (R2: {r2:.2f})')
-    ax.set_xlabel('Concentration')
-    ax.set_ylabel('Intensity')
-    ax.legend()
-    ax.grid(True)
+    sns.scatterplot(x=concentration_values, y=predictions, ax=ax, label='Calibration Points', s=50)
+    sns.lineplot(x=concentration_values, y=predictions, ax=ax, label=f'Fit Line (R2: {r2:.2f})')
+    sns.scatterplot(x=predicted_concentrations, y=gb.predict(replicate_intensity_matrix_scaled), ax=ax, label='New Samples', s=50)
 
-    # Create a canvas to display the plot in the tkinter window
+    ax.set_xlabel('Concentration')
+    ax.set_ylabel('Predicted Concentration')
+    ax.legend()
+    ax.set_title(f'Gradient Boosting Calibration Curve for {selected_element}')
+
+    # Display the plot in the Tkinter window
     canvas = FigureCanvasTkAgg(fig, master=result_window)
     canvas.draw()
-    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+    canvas.get_tk_widget().pack(fill='both', expand=True)
 
     # Create a frame for the table and metrics
     frame = ttk.Frame(result_window)
-    frame.pack(fill=tk.BOTH, expand=True)
+    frame.pack(fill='both', expand=True)
 
     # Calculate metrics for the new samples
-    new_intensities = intensities[len(concentrations):]
-    new_concentrations = (new_intensities - intercept) / slope
-    avg_concentration = np.mean(new_concentrations)
-    std_deviation = np.std(new_concentrations)
+    avg_concentration = np.mean(predicted_concentrations)
+    std_deviation = np.std(predicted_concentrations)
 
     # Create a table for the calculated concentrations
     table_frame = ttk.Frame(frame)
-    table_frame.pack(fill=tk.BOTH, expand=True)
+    table_frame.pack(fill='both', expand=True)
     table = ttk.Treeview(table_frame, columns=('Sample', 'Concentration'), show='headings')
     table.heading('Sample', text='Sample')
     table.heading('Concentration', text='Concentration')
-    for i, concentration in enumerate(new_concentrations):
-        table.insert('', 'end', values=(i + 1, concentration))
-    table.pack(fill=tk.BOTH, expand=True)
+    table.column('Sample', anchor='center', width=100)
+    table.column('Concentration', anchor='center', width=150)
 
-    # Display metrics below the table
-    metrics_frame = ttk.Frame(frame)
-    metrics_frame.pack(fill=tk.X)
-    ttk.Label(metrics_frame, text=f'Average Concentration: {avg_concentration:.2f}').pack(side=tk.LEFT, padx=10)
-    ttk.Label(metrics_frame, text=f'Standard Deviation: {std_deviation:.2f}').pack(side=tk.LEFT, padx=10)
+    # Add rows for calculated concentrations
+    for i, concentration in enumerate(predicted_concentrations):
+        table.insert('', 'end', values=(i + 1, f'{concentration:.3f}'))
 
+    # Add rows for metrics
+    table.insert('', 'end', values=('Average', f'{avg_concentration:.3f}'), tags=('metric',))
+    table.insert('', 'end', values=('Std Dev', f'{std_deviation:.3f}'), tags=('metric',))
 
+    # Apply a style for the metrics rows
+    style = ttk.Style()
+    style.configure('Treeview', rowheight=25)
+    style.configure('Treeview.Heading', font=('Calibri', 12, 'bold'))
+    style.configure('Treeview', font=('Calibri', 12))
+    style.map('Treeview', background=[('selected', 'blue')])
 
+    # Configure the treeview tags directly
+    table.tag_configure('metric', foreground='black')
+
+    table.pack(fill='both', expand=True)
+
+    # Add a scrollbar to the table
+    scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=table.yview)
+    table.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side='right', fill='y')
 
 
 
