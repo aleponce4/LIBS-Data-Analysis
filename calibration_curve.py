@@ -118,7 +118,7 @@ def process_calibration(app):
     # Plotting and Showing Results
     result_window = Toplevel(app.root)
     result_window.title("Calibration Results")
-    result_window.geometry("800x600")
+    result_window.geometry("1000x800")
 
     fig, ax = plt.subplots()
 
@@ -130,7 +130,7 @@ def process_calibration(app):
     ax.set_xlabel('Concentration')
     ax.set_ylabel('Predicted Concentration')
     ax.legend()
-    ax.set_title(f'Gradient Boosting Calibration Curve for {selected_element}')
+    ax.set_title(f'Gradient Boosting regression: {selected_element}')
 
     # Display the plot in the Tkinter window
     canvas = FigureCanvasTkAgg(fig, master=result_window)
@@ -158,11 +158,14 @@ def process_calibration(app):
     for i, concentration in enumerate(predicted_concentrations):
         table.insert('', 'end', values=(i + 1, f'{concentration:.3f}'))
 
+    # Add an empty row as a divider
+    table.insert('', 'end', values=('', ''), tags=('divider',))
+
     # Add rows for metrics
     table.insert('', 'end', values=('Average', f'{avg_concentration:.3f}'), tags=('metric',))
     table.insert('', 'end', values=('Std Dev', f'{std_deviation:.3f}'), tags=('metric',))
 
-    # Apply a style for the metrics rows
+    # Apply styles for the rows
     style = ttk.Style()
     style.configure('Treeview', rowheight=25)
     style.configure('Treeview.Heading', font=('Calibri', 12, 'bold'))
