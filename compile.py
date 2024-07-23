@@ -1,58 +1,12 @@
-import os
-import subprocess
-import sys
-from datetime import datetime
-import shutil
+# pyinstaller --onefile --add-data "C:/Users/Alex/Desktop/LIBS_changes/LIBS-Data-Analysis/Icons;Icons" --add-data "C:/Users/Alex/Desktop/LIBS_changes/LIBS-Data-Analysis/Help;Help" --add-data "C:/Users/Alex/Desktop/LIBS_changes/LIBS-Data-Analysis/images;images" --add-data "C:/Users/Alex/Desktop/LIBS_changes/LIBS-Data-Analysis/element_database.csv;." --add-data "C:/Users/Alex/Desktop/LIBS_changes/LIBS-Data-Analysis/persistent_lines.csv;." --icon "C:/Users/Alex/Desktop/LIBS_changes/LIBS-Data-Analysis/Icons/main_icon.ico" --name "ProLIBSpector" --distpath "C:/Users/Alex/Desktop/LIBS_changes/Compiled_version" --workpath "C:/Users/Alex/Desktop/LIBS_changes/Compiled_version/build" --additional-hooks-dir "C:/Users/Alex/Desktop/LIBS_changes/LIBS-Data-Analysis/hooks" C:/Users/Alex/Desktop/LIBS_changes/LIBS-Data-Analysis/main.py
 
-# Clean the directory
-build_dir = "C:\\Users\\Alex\\Desktop\\LIBS_changes\\Compiled version"
-if os.path.exists(build_dir):
-    shutil.rmtree(build_dir)
-os.makedirs(build_dir)
 
-# 
-def main():
-    # Define the base command to compile the application using Nuitka
-    command = [
-        sys.executable,  # Use the Python executable from the current environment
-        "-m", "nuitka",
-        "--onefile",
-        "--windows-icon-from-ico=Icons/main_icon.ico",
-        "--include-data-dir=Icons=Icons",
-        "--include-data-dir=Help=Help",
-        "--include-data-dir=images=images",
-        "--include-package=ttkthemes",  # Ensure the ttkthemes package is included
-        "--output-dir=C:\\Users\\Alex\\Desktop\\LIBS_changes\\Compiled version",
-        "--enable-plugin=tk-inter",  # Enable Tkinter plugin
-        "--output-filename=ProLIBSpector.exe",  # Specify the output executable name
-        "main.py"
-    ]
-
-    # Add the correct path to the ttkthemes directory
-    theme_dir = os.path.join(sys.prefix, 'Lib', 'site-packages', 'ttkthemes')
-    if not os.path.exists(theme_dir):
-        raise FileNotFoundError(f"The specified theme directory does not exist: {theme_dir}")
-
-    # Add theme files to the command
-    command.append(f"--include-data-dir={theme_dir}=ttkthemes")
-
-    # Ensure the output directory exists
-    output_dir = "C:\\Users\\Alex\\Desktop\\LIBS_changes\\Compiled version"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    # Print the command for debugging
-    print("Running command:", " ".join(command))
-
-    # Run the Nuitka command
-    try:
-        result = subprocess.run(command, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print("Compilation successful.")
-        print(result.stdout)
-    except subprocess.CalledProcessError as e:
-        print("An error occurred during compilation.")
-        print(e.stdout)
-        print(e.stderr)
-
-if __name__ == "__main__":
-    main()
+#Explanation of the Command:
+#--onefile: Creates a one-file bundled executable.
+#--add-data: Includes additional files and directories. The format is source_path;destination_path.
+#--icon: Specifies the icon file for the executable.
+#--name: Specifies the name of the output executable.
+#--distpath: Specifies the output directory for the final executable.
+#--workpath: Specifies the directory for temporary build files.
+#--additional-hooks-dir: Specifies the directory containing custom hook files.
+#The last argument is the path to your main Python script.

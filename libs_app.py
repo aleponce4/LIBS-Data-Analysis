@@ -1,5 +1,5 @@
 # libs_app.py - Contains the app class, which initializes the main window and customizes its appearance.
-
+import os
 import tkinter as tk
 from tkinter import ttk  # ttk is a submodule of tkinter for themed widgets
 from ttkthemes import ThemedTk
@@ -35,7 +35,9 @@ class App:
         self.mode_var = tk.StringVar(value="Analysis")
 
         # Set the Icon
-        self.root.iconbitmap('Icons/main_icon.ico')
+        #self.root.iconbitmap('Icons/main_icon.ico')
+        icon_path = os.path.join(os.path.dirname(__file__), 'Icons', 'main_icon.ico')
+        self.root.iconbitmap(icon_path)
 
         # Add this line to initialize peak_values
         self.peak_labels = []
