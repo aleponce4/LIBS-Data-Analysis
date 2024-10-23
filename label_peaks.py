@@ -65,7 +65,7 @@ def label_peaks(app, ax, element_df):
         slider_label.grid(row=1, column=2, columnspan=2, padx=15, pady=15, sticky="w")
 
         # Create the round-off error tolerance slider  ##########################################
-        ttk.Label(tolerance_window, text="Select round-off error tolerance:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
+        ttk.Label(tolerance_window, text="Select Tolerance (nm)").grid(row=2, column=0, padx=5, pady=5, sticky="e")
         round_off_error_tolerance_var = tk.IntVar()
         round_off_error_tolerance_var.set(0)
         round_off_error_tolerance_slider = ttk.Scale(tolerance_window, from_=0, to=3, orient=tk.HORIZONTAL, variable=round_off_error_tolerance_var, length=300)
@@ -162,20 +162,29 @@ def update_labels(app, ax, intensity_var, round_off_error_tolerance_var, font_si
     texts = []  # store text objects for adjust_text
     for idx in peak_indices[0]:
         if y_data[idx] >= threshold:
-            label = f"{x_data[idx]:.0f} nm"
+            label = f"{x_data[idx]:.3f} nm"
             
             # Check if element_df is not None before accessing it
             if element_df is not None:
-                rounded_peak_x = round(x_data[idx], app.round_off_error_tolerance)
+                # Get the current peak wavelength
+                peak_wavelength = x_data[idx]
+                # Get the tolerance value from the slider (in nm)
+                tolerance = app.round_off_error_tolerance_var.get()  # This will replace the decimal rounding mechanism
+                # Convert the Wavelength column to numeric values
                 element_df.loc[:, "Wavelength"] = pd.to_numeric(element_df["Wavelength"], errors="coerce")
-                rounded_wavelengths = [round(x, app.round_off_error_tolerance) for x in element_df["Wavelength"].dropna()]
+                # Find the closest match within the tolerance range
+                closest_match = element_df.loc[
+                    (element_df["Wavelength"] >= peak_wavelength - tolerance) & 
+                    (element_df["Wavelength"] <= peak_wavelength + tolerance)
+                ]
 
-                # Check if the rounded peak wavelength is in the rounded_wavelengths list
-                if rounded_peak_x in rounded_wavelengths:
-                    match_idx = rounded_wavelengths.index(rounded_peak_x)
-                    element_symbol = element_df.iloc[match_idx]["Symbol"]
-                    ionization_level = element_df.iloc[match_idx]["Ionization Level"]
+                # If a match is found, label it with the element symbol and ionization level
+                if not closest_match.empty:
+                    match_idx = closest_match.index[0]  # Get the index of the first match
+                    element_symbol = closest_match.iloc[0]["Symbol"]
+                    ionization_level = closest_match.iloc[0]["Ionization Level"]
                     label += f" ({element_symbol}, {ionization_level})"
+
 
             # Add the following two lines to create the text object and append it to the texts list
             text_obj = ax.text(x_data[idx], y_data[idx], label, fontsize=font_size_var.get(), ha='center', va='bottom')
