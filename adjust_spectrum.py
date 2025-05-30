@@ -149,7 +149,7 @@ def adjust_spectrum(app, ax):
         return y_processed
 
     def apply_smoothing(val, smooth_method_var):
-        # Apply Moving average smoothing
+    # Apply Moving average smoothing
         if smooth_method_var.get() == "Moving average":
             window_size = max(int(float(val)) // 2, 1)  # Divide window size by 2
             if window_size % 2 == 0:
@@ -179,7 +179,7 @@ def adjust_spectrum(app, ax):
                 val += 1
             y_smoothed = scipy.signal.medfilt(y_data, kernel_size=val)
 
-        # Apply Wavelet transform smoothing
+    # Apply Wavelet transform smoothing
         elif smooth_method_var.get() == "Wavelet transform":
             coeffs = pywt.wavedec(y_data, 'coif1')
             threshold = (val/4) * np.max(np.abs(coeffs[-1]))  # Divide threshold multiplier by 4
@@ -187,7 +187,7 @@ def adjust_spectrum(app, ax):
             coeffs_thresh.insert(0, coeffs[0])
             y_smoothed = pywt.waverec(coeffs_thresh, 'coif1')
             y_smoothed = np.resize(y_smoothed, len(y_data))  # Resize y_smoothed to have the same length as y_data
-
+        
         # If no smoothing method is selected, return the original data
         else:
             y_smoothed = y_data
