@@ -4,7 +4,7 @@ from datetime import datetime
 
 # Define paths and options
 main_script = os.path.abspath("main.py")
-base_output_dir = os.path.abspath("C:\\Users\\Alex\\Desktop\\LIBS_changes\\Compiled version")
+base_output_dir = os.path.abspath("Compiled version")  # Output to local folder
 icon_path = os.path.abspath("Icons\\main_icon.ico")
 include_dirs = [
     os.path.abspath("Icons") + "=Icons",

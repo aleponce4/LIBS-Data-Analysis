@@ -1,4 +1,4 @@
-#!C:\Users\Alex\Desktop\LIBS_changes\LIBS-Data-Analysis\LIBS_venv\Scripts\python.exe
+#!C:\Users\alepo\Desktop\Onteko\LIBS-Data-Analysis\LIBS_venv\Scripts\python.exe
 # -*- coding: utf-8 -*-
 
 # Description
