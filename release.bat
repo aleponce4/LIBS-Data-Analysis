@@ -65,7 +65,7 @@ if "%newest_folder%"=="" (
     exit /b 1
 )
 
-set exe_path="Compiled version\%newest_folder%\main.exe"
+set exe_path="Compiled version\%newest_folder%\LIBS.exe"
 
 if not exist %exe_path% (
     echo Error: Executable not found at %exe_path%
