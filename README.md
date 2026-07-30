@@ -4,7 +4,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 
-Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) analysis software featuring simulated acquisition, spectrum preprocessing, elemental line identification, and 2D mapping visualization.
+Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) analysis software featuring simulated acquisition, spectral preprocessing, elemental line identification, and 2D mapping visualization.
 
 ---
 
@@ -27,7 +27,7 @@ Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) an
 - **Elemental Line Identification**: NIST element line database integration (`element_database.csv`), persistent emission line overlays, and peak matching tolerances.
 - **Interactive Visualization**: High-DPI PyQtGraph interactive spectrum canvas, region-of-interest (ROI) selection, peak annotation, and dark spectrum subtraction.
 - **Asynchronous File Export**: Lock-free background exporter thread saving acquired spectra and JSON reproducibility manifests with SHA256 data checksums.
-- **2D Mapping Analysis**: Spatial grid spectrum visualization and peak intensity heatmap rendering.
+- **2D Mapping Analysis**: Spatial grid spectrum visualization, ground-truth benchmark separation, and peak intensity heatmap rendering.
 
 ---
 
@@ -43,7 +43,7 @@ Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) an
 ### 2. Interactive Periodic Table Element Selector
 
 ![Interactive Periodic Table Selector](docs/img/gui_periodic_table.png)
-*_Interactive Periodic Table dialog interface enabling element selection, database configuration, and ionization state filtering (I, II, III) for NIST line overlay matching._*
+*_Interactive Periodic Table dialog interface enabling element selection, database selection, and ionization state filtering (I, II, III) for NIST line overlay matching._*
 
 ---
 
@@ -54,14 +54,21 @@ Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) an
 
 ---
 
-### 4. Reconstructed 2D LIBS Spatial Mapping
+### 4. Ground-Truth 2D LIBS Spatial Mapping (Decorated Ceramic Tile)
 
-![Side-by-Side 2D Mapping](docs/img/libs_2d_mapping_real_hotspot.png)
-*_Reconstructed 2D spatial elemental intensity map (Sodium 588.99 nm hotspot) alongside the 5x5 grid acquisition pattern (1.0 mm pitch). Pixel intensity represents normalized peak area extracted from test fixture data._*
+![Decorated Ceramic Tile 2D Mapping Composite](docs/img/ceramic_tile_2d_mapping_composite.png)
+*_Ground-truth 2D LIBS elemental mapping composite of a decorated ceramic tile sample. Panels display the original sample photograph, co-localized blue pigment elements (Copper Cu vs. Cobalt Co), overglaze dark outline ink (Manganese Mn vs. Lead Pb), and the non-present negative control (Cesium Cs). Colorbar indicates signal-to-noise ratio ($0\text{--}10\sigma$)._*
 
 ---
 
-### 5. Timing & Signal-to-Noise Optimization Matrix
+### 5. Single-Point Annotated LIBS Emission Spectrum
+
+![Annotated LIBS Emission Spectrum](docs/img/ceramic_tile_annotated_spectrum.png)
+*_Annotated net-intensity spectrum from a ceramic tile sample point across 200–1000 nm, identifying key neutral and ionic emission lines for Cu I (325/327 nm), Co I (358/361 nm), Pb I (368/406 nm), Ca II (393/397 nm), Na I (589 nm), and K I (766/769 nm)._*
+
+---
+
+### 6. Timing & Signal-to-Noise Optimization Matrix
 
 ![SNR Optimization Heatmap](docs/img/delay_sweep_snr_heatmap.png)
 *_Signal-to-Noise Ratio (SNR) parameter matrix generated across trigger delays (0–32 µs) and integration windows (0.009–1 ms), identifying an optimal acquisition window at 8 µs delay and 0.1 ms integration (SNR 192)._*
