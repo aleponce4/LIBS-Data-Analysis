@@ -4,13 +4,15 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 
-Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) analysis software featuring simulated acquisition, automated multi-plate workflow orchestration, spectral preprocessing, elemental line identification, and 2D mapping visualization.
+## About
+
+Python-based software for scientific instrument control, automated motorized sample positioning, pulsed laser triggering, and spectral data analysis for Laser-Induced Breakdown Spectroscopy (LIBS). Controls Ocean Optics, Thorlabs CCS, and YiXist spectrometers, GRBL 1.1 motorized $X\text{--}Y\text{--}Z$ stages, and Q-switched pulse lasers via an interactive desktop GUI built with Tkinter and PyQtGraph. Features automated 2x2 microplate mapping, spatial grid rastering, spectral preprocessing, high-DPI scientific plotting, and NIST Atomic Spectra Database elemental line identification.
 
 ---
 
 ## Public-Edition Scope
 
-> This repository contains the public edition of ProLIBSpector, a scientific instrument-control and LIBS analysis application. It includes selected generic components for simulated acquisition, spectrum processing, visualization, metadata recording, and nonconfidential analysis workflows. Commercial, customer-specific, proprietary classification, production automation, and private hardware functionality are maintained separately.
+> This repository contains the public edition of ProLIBSpector, a scientific instrument-control and LIBS analysis application. It includes selected generic components for simulated acquisition, spectrum processing, visualization, metadata recording, and nonconfidential analysis workflows. Commercial, customer-specific, proprietary classification, production automation, and private hardware DLL binaries are maintained separately.
 
 ---
 
@@ -20,15 +22,69 @@ Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) an
 
 ---
 
-## Supported Features
+## Supported Hardware & Interfaces
 
-- **Hardware-Free Simulation**: `SimulatedSpectrometer` engine mimicking dark counts, integration timing responses, synthetic emission lines, shot noise, and trigger delays.
-- **Automated Multi-Plate Acquisition**: Automated stage control interface supporting 2x2 multi-plate holders (P1–P4, Corning 96-well format), live spectrum canvas, and well status maps.
-- **Spectral Preprocessing**: Savitzky-Golay filtering, Asymmetric Least Squares (ALS) baseline correction, Area normalization, Maximum normalization, and Standard Normal Variate (SNV) transformation.
-- **Elemental Line Identification**: NIST element line database integration (`element_database.csv`), persistent emission line overlays, and peak matching tolerances.
+ProLIBSpector includes driver abstraction layers for commercial spectroscopic and motion hardware alongside a zero-dependency simulated backend for hardware-free execution:
+
+- **Spectrometers**:
+  - **Ocean Optics**: USB2000+, HR4000, Flame, Maya2000 Pro, Spark (via SeaBreeze C-library and PyUSB backends).
+  - **Thorlabs CCS Series**: CCS100, CCS125, CCS150, CCS175, CCS200 compact spectrometers (via `TLCCS` C-DLL and VISA driver wrappers).
+  - **YiXist YSM Series**: YSM-8111-06-01 high-resolution spectrometers (via C++ DLL wrapper interfaces).
+- **Motorized Stage Motion Control ($X\text{--}Y\text{--}Z$)**:
+  - **GRBL 1.1 Controllers**: Multi-axis stepper motor stage positioning via serial GRBL protocol ($X\text{--}Y$ spatial rastering, $Z$-axis focal positioning, microplate well alignment, teach-point calibration).
+- **Pulsed Ablation Lasers**:
+  - **Q-Switched Pulsed Lasers**: Monport K40 relay, LaserArt 10 Hz Nd:YAG laser control, external pulse generator synchronization, and foot-switch firing semantics.
+- **Simulated Hardware Engine**:
+  - Zero-dependency simulation engines (`SimulatedSpectrometer`, simulated 2-axis stage) mimicking physical nanosecond plasma emission decay, dark counts, exposure integration timing, stage movement, shot noise, and trigger delay responses.
+
+---
+
+## Core Features
+
+- **Hardware-Free Simulation**: `SimulatedSpectrometer` and simulated stage engines for full workflow testing without physical hardware.
+- **Automated Multi-Plate & Grid Acquisition**: Motorized stage raster scanning, 2x2 multi-plate holder support (P1–P4, Corning 96-well format), live spectrum canvas, and well status maps.
+- **Spectral Preprocessing Engine**: Savitzky-Golay filtering, Asymmetric Least Squares (ALS) baseline correction, Area normalization, Maximum normalization, and Standard Normal Variate (SNV) transformation.
+- **Elemental Line Identification**: Internal reference database derived from NIST Atomic Spectra Database (ASD) data covering neutral and ionic species ($I, II, III$).
 - **Interactive Visualization**: High-DPI PyQtGraph interactive spectrum canvas, region-of-interest (ROI) selection, peak annotation, and dark spectrum subtraction.
 - **Asynchronous File Export**: Lock-free background exporter thread saving acquired spectra and JSON reproducibility manifests with SHA256 data checksums.
-- **2D Mapping Analysis**: Spatial grid spectrum visualization, ground-truth benchmark separation, and peak intensity heatmap rendering.
+- **Ground-Truth 2D Mapping Analysis**: Spatial grid spectrum visualization, ground-truth benchmark separation, and peak intensity heatmap rendering.
+
+---
+
+## Elemental Line Database & NIST Citation
+
+Elemental line search and peak matching rely on an internal reference database derived from NIST Atomic Spectra Database (ASD) data covering neutral and ionic species ($I, II, III$).
+
+### NIST ASD Citation
+
+> Kramida, A., Ralchenko, Y., Reader, J., and NIST ASD Team. *NIST Atomic Spectra Database* (Version 5.12). National Institute of Standards and Technology, Gaithersburg, MD. DOI: [10.18434/T4W30F](https://doi.org/10.18434/T4W30F).
+
+---
+
+## Supported File Input & Export Formats
+
+- **Input Formats**:
+  - Legacy & standard single-shot / average spectral CSV files.
+  - Multi-column spatial mapping index manifests (`_mapping_grid_index.csv`).
+  - Binary memory-mapped intensity arrays (`_mapping_spectrum_store/intensities.npy`).
+  - JSON run configuration and calibration snapshots (`_mapping_grid_manifest.json`).
+
+- **Export & Storage Formats**:
+  - **CSV Spectral Files**: Standard 2-column $(\lambda, \text{Intensity})$ and multi-point CSV exports.
+  - **High-Density Binary Stores**: Chunked binary arrays (`.npy`) for rapid disk write/read during high-speed raster scanning.
+  - **Reproducibility Manifests**: Automated JSON metadata logs containing spectrometer settings, laser energy profiles, timestamped spatial coordinates, and SHA256 data checksums.
+  - **Graphics & Figures**: Export to high-resolution PNG, PDF, and SVG formats via Matplotlib and PyQtGraph canvases.
+
+---
+
+## High-Performance Analysis, Matrix Caching & Parallel Architecture
+
+Processing large-scale 2D LIBS spatial maps (thousands of grid points, multiple shot replicates per point, multi-element spectral line scoring) requires optimized data structures and memory management:
+
+- **Binary Memory Mapping (`.npy`)**: Large mapping datasets use memory-mapped binary array stores (`intensities.npy`) to avoid the I/O overhead of parsing gigabytes of CSV text files.
+- **Content-Addressed Deterministic Caching**: Preprocessing results, candidate line scans, and fused multi-element intensity grids are cached under cryptographic signatures (`_mapping_analysis_cache/`). The cache signature hashes the algorithm version, preprocessing settings, sideband geometry, and line selection rules to ensure instantaneous re-loading without redundant re-computation.
+- **Vectorized Matrix Computations**: Peak net-area integration, local continuum sideband estimation, empirical null distributions, and robust Z-score computations are fully vectorized using NumPy.
+- **Asynchronous Non-Blocking I/O**: Multi-threaded acquisition queues and a dedicated lock-free background disk writer thread (`mapping_save_writer.py`) prevent UI freezes during continuous high-frequency data acquisition.
 
 ---
 
