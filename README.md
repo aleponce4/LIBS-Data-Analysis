@@ -1,6 +1,6 @@
 # ProLIBSpector (Public Edition)
 
-[![CI](https://github.com/aponcefl/libs-spectroscopy-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/aponcefl/libs-spectroscopy-workbench/actions/workflows/ci.yml)
+[![CI](https://github.com/aleponce4/libs-spectroscopy-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/aleponce4/libs-spectroscopy-workbench/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 
@@ -28,6 +28,43 @@ Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) an
 - **Interactive Visualization**: High-DPI PyQtGraph interactive spectrum canvas, region-of-interest (ROI) selection, peak annotation, and dark spectrum subtraction.
 - **Asynchronous File Export**: Lock-free background exporter thread saving acquired spectra and JSON reproducibility manifests with SHA256 data checksums.
 - **2D Mapping Analysis**: Spatial grid spectrum visualization and peak intensity heatmap rendering.
+
+---
+
+## Visual Demonstration & Evidence
+
+### 1. Main Application Interface (Analysis Mode)
+
+![Main Application Interface](docs/img/main_gui_analysis.png)
+*_Main application interface in Analysis Mode displaying an imported reference Titanium spectrum (200–880 nm) with interactive curve controls, spectrum parameter sidebar, and plot navigation tools._*
+
+---
+
+### 2. Interactive Periodic Table Element Selector
+
+![Interactive Periodic Table Selector](docs/img/gui_periodic_table.png)
+*_Interactive Periodic Table dialog interface enabling element selection, database configuration, and ionization state filtering (I, II, III) for NIST line overlay matching._*
+
+---
+
+### 3. Peak Identification & NIST Database Search
+
+![Peak Identification & NIST Overlay](docs/img/peak_identification_nist.png)
+*_Automated peak detection and NIST elemental line matching for Ti I and Ti II emission lines (e.g. 335 nm, 454 nm, 501 nm) with configurable intensity threshold sliders and round-off error tolerances._*
+
+---
+
+### 4. Reconstructed 2D LIBS Spatial Mapping
+
+![Side-by-Side 2D Mapping](docs/img/libs_2d_mapping_real_hotspot.png)
+*_Reconstructed 2D spatial elemental intensity map (Sodium 588.99 nm hotspot) alongside the 5x5 grid acquisition pattern (1.0 mm pitch). Pixel intensity represents normalized peak area extracted from test fixture data._*
+
+---
+
+### 5. Timing & Signal-to-Noise Optimization Matrix
+
+![SNR Optimization Heatmap](docs/img/delay_sweep_snr_heatmap.png)
+*_Signal-to-Noise Ratio (SNR) parameter matrix generated across trigger delays (0–32 µs) and integration windows (0.009–1 ms), identifying an optimal acquisition window at 8 µs delay and 0.1 ms integration (SNR 192)._*
 
 ---
 

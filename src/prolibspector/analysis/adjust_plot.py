@@ -6,8 +6,15 @@ from tkinter.colorchooser import askcolor
 import matplotlib.colors as mcolors
 from tkinter import messagebox
 import numpy as np
-import markdown
-from tkhtmlview import HTMLLabel
+try:
+    import markdown
+except ImportError:
+    markdown = None
+
+try:
+    from tkhtmlview import HTMLLabel
+except ImportError:
+    HTMLLabel = None
 from prolibspector.core.settings import capture_plot_settings, load_settings, save_settings
 from prolibspector.core.ui_theme import get_palette
 from prolibspector.core.windowing import apply_window_policy, create_dialog, make_markdown_help_window
