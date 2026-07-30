@@ -6,16 +6,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from PIL import Image, ImageTk
-
-from prolibspector.core.paths import resource_path
-from prolibspector.core.ui_theme import current_theme_name
-
-if TYPE_CHECKING:
-    import tkinter as tk
-
-
-RESAMPLE = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
+try:
+    from PIL import Image, ImageTk
+    RESAMPLE = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
+except ImportError:
+    Image = None
+    ImageTk = None
+    RESAMPLE = None
 _ICON_SPEC_ATTR = "_prolibspector_themed_icon_spec"
 
 
