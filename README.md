@@ -1,92 +1,114 @@
-# LIBS-Data-Analysis
+# ProLIBSpector (Public Edition)
 
-A standalone Windows application for Laser Induced Breakdown Spectroscopy (LIBS) data analysis. This tool allows users to import, adjust, and analyze LIBS data, offering functionalities such as spectrum adjustment, plotting, and elemental line identification using a built-in periodic table.
+[![CI](https://github.com/aponcefl/libs-spectroscopy-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/aponcefl/libs-spectroscopy-workbench/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 
-## Modes
+Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) analysis software featuring simulated acquisition, spectrum preprocessing, elemental line identification, and 2D mapping visualization.
 
-The application launches with a mode selector:
+---
 
-### Analysis Mode
-- **Import Data**: Load LIBS spectral data files.
-- **Adjust Spectrum**: Normalize and smooth (Moving Average, Gaussian, Savitzky-Golay, Median, Wavelet).
-- **Adjust Plot**: Customize plot appearance and axis settings.
-- **Search Element**: Periodic table interface for elemental line identification.
-- **Export**: Save plots and processed data.
+## Public-Edition Scope
 
-### Acquisition Mode
-- **Spectrometer Control**: Connect to an Ocean Optics spectrometer via `python-seabreeze`.
-  On Windows, the app can use either a WinUSB-bound device with `cseabreeze` or a
-  libusb/libusbK-bound device with `pyseabreeze`. For source installs, make sure
-  `libusb-package` is installed so `pyseabreeze` can load a `pyusb` backend.
-- **Live View**: Real-time spectrum display with configurable integration time and averaging.
-- **Hardware Trigger**: Arm external edge trigger for laser-synchronized capture.
-- **Auto-Save**: Automatic saving of triggered spectra with sample naming and shot counter.
-- **Send to Analysis**: Hand off captured spectra directly to Analysis Mode (no disk I/O).
-- **Simulation Mode**: Built-in simulated spectrometer for testing without hardware.
-- **Benchmark Runner**: `acquisition_benchmark.py` measures trigger/read/save timing and can
-  report GUI queue latency when run through the acquisition window.
+> This repository contains the public edition of ProLIBSpector, a scientific instrument-control and LIBS analysis application. It includes selected generic components for simulated acquisition, spectrum processing, visualization, metadata recording, and nonconfidential analysis workflows. Commercial, customer-specific, proprietary classification, production automation, and private hardware functionality are maintained separately.
 
-Example:
-```bash
-python acquisition_benchmark.py --simulate --mode test --shots 25 --auto-save
+---
+
+## Relationship to Private Product
+
+`ProLIBSpector` remains the complete private product and authoritative development codebase. This public repository demonstrates generic scientific-software architecture, software hardware simulation, signal processing algorithms, visualization, testing, and software reliability without exposing commercially sensitive startup algorithms or vendor SDK binaries.
+
+---
+
+## Supported Features
+
+- **Hardware-Free Simulation**: `SimulatedSpectrometer` engine mimicking dark counts, integration timing responses, synthetic emission lines, shot noise, and trigger delays.
+- **Spectral Preprocessing**: Savitzky-Golay filtering, Asymmetric Least Squares (ALS) baseline correction, Area normalization, Maximum normalization, and Standard Normal Variate (SNV) transformation.
+- **Elemental Line Identification**: NIST element line database integration (`element_database.csv`), persistent emission line overlays, and peak matching tolerances.
+- **Interactive Visualization**: High-DPI PyQtGraph interactive spectrum canvas, region-of-interest (ROI) selection, peak annotation, and dark spectrum subtraction.
+- **Asynchronous File Export**: Lock-free background exporter thread saving acquired spectra and JSON reproducibility manifests with SHA256 data checksums.
+- **2D Mapping Analysis**: Spatial grid spectrum visualization and peak intensity heatmap rendering.
+
+---
+
+## Architecture Overview
+
+```mermaid
+flowchart TD
+    UI[GUI Layer / PyQt5 & PyQtGraph] --> Launcher[Mode Launcher]
+    Launcher --> Analysis[Analysis App]
+    Launcher --> Acquisition[Acquisition App]
+    
+    Acquisition --> Worker[Acquisition Worker Thread]
+    Worker --> DevBase[Spectrometer Base Interface]
+    DevBase --> SimDev[SimulatedSpectrometer Backend]
+    
+    Worker --> Writer[Asynchronous Save Exporter]
+    Writer --> Storage[(Disk Exporter: CSV & JSON Manifest)]
+    
+    Analysis --> Preproc[Preprocessing Module: ALS Baseline / SG Filter]
+    Analysis --> NIST[NIST Line Database Search]
 ```
 
-**Note**
-python-seabreeze requires the spectrometer to use a WinUSB/libusb compatible driver rather than the default Ocean Optics driver.
-If the device is not detected:
-1 Install Zadig  
-2 Connect spectrometer  
-3 Select device from list  
-4 Replace driver with WinUSB  
-5 Restart software  
-Note: OceanView will not work while WinUSB is installed. Reinstall Ocean Optics drivers to restore vendor software.****
+---
 
-## Installation
+## Quick Start (Simulated Mode)
 
-### Compiled Software
+### Prerequisites
 
-The software is provided as a standalone executable for Windows. No installation or prerequisites are required.
+Python 3.10+ is required.
 
-**[📥 Download the latest version here](https://github.com/aleponce4/LIBS-Data-Analysis/releases/latest)**
+### Installation
 
-*Always get the latest version with bug fixes and new features from our GitHub releases.*
+```bash
+git clone https://github.com/aponcefl/libs-spectroscopy-workbench.git
+cd libs-spectroscopy-workbench
+pip install -e .
+```
 
-### From Source
+### Running the Application
 
-1. **Clone the repository**.
-2. **Install the required libraries**:
-   ```
-   pip install -r requirements.txt
-   ```
-3. **Run the application**:
-   ```
-   python main.py
-   ```
+Launch the desktop interface using the simulated backend:
 
-## Usage
+```bash
+python main.py
+```
 
-1. **Run the Software**: Double-click the executable, or run `python main.py` from source.
-2. **Choose a Mode**: Select Analysis or Acquisition from the launcher.
-![Alt text](images/1.png)
-3. **Adjust and Analyze**: 
+Select **Simulated Acquisition** to test live spectral collection without physical hardware, or **Analysis Mode** to process offline spectra and compare NIST elemental lines.
 
-   - **3.1 Visual Apearance**: Use the 'Adjust Plot' tab to change the plot's visual apearance
-   ![Alt text](images/2.png)
-   - **3.2 Normalization**: Use the 'Adjust Spectrum' tab to apply apply normalization fitlers
-   - **3.3 Peak Search**:  Use the 'Search Element' tab to search desired peaks. Select elements of interes by cliking in the periodic table, and select wanted ionization levels and peak database.
-   ![Alt text](images/4.png)
-   - **3.4 Final adjustments**:  Use the next tab to define an intensity treshold for peaks of itnerest and hide unlabel peaks.
-   ![Alt text](images/5.png)
+---
 
-4. **Export Results**: Once satisfied, you can export your plots and adjusted data.
+## Testing & Validation Scope
 
-## Contributing
+Automated unit and integration tests verify device initialization, wavelength generation, baseline correction algorithms, multi-threaded export queues, and reproducibility manifest formatting.
 
-This project is currently in active development. If you have suggestions, feedback, or would like to contribute, please [contact the author](https://github.com/aleponce4)
+To execute the test suite locally:
 
-## Acknowledgments
+```bash
+pytest
+```
 
-I'd like to extend my gratitude to:
+The test profile uses synthetic fixtures and simulated hardware drivers. Execution on physical spectrometers and commercial hardware drivers is validated separately on hardware test benches.
 
-- **Onteko Inc.** for providing the resources that made the development of this software possible.
-- **Teresa Flores, Phd** for her invaluable spectroscopy expertise, guidance throughout the project, and for conducting the essential experimentation that led to the development of the elemental databases.
+---
+
+## Hardware Simulation
+
+The primary execution engine in this public edition is `SimulatedSpectrometer`. It generates synthetic plasma emission spectra based on physical decay models:
+
+$$\text{Intensity}(\lambda, t) = I_{\text{lines}}(\lambda) e^{-t / \tau_{\text{lines}}} + I_{\text{continuum}}(\lambda) e^{-t / \tau_{\text{continuum}}} + \text{Noise}$$
+
+This allows full workflow execution, GUI testing, and data stream validation without requiring a physical spectrometer or pulse laser.
+
+---
+
+## Known Limitations
+
+- **Physical Drivers Omitted**: Physical USB drivers (Ocean Optics SeaBreeze), YiXist C++ DLL wrappers, and GRBL 1.1 laser motion control are omitted from the public edition.
+- **Classification Models Omitted**: Proprietary seed classification and delay sweep analysis modules are maintained in the private product repository.
+
+---
+
+## License
+
+This public edition is released under the [GNU General Public License v3.0](LICENSE).

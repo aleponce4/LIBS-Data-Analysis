@@ -1,0 +1,2 @@
+"""Acquisition-mode application modules."""
+
