@@ -4,7 +4,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 
-Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) analysis software featuring simulated acquisition, spectral preprocessing, elemental line identification, and 2D mapping visualization.
+Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) analysis software featuring simulated acquisition, automated multi-plate workflow orchestration, spectral preprocessing, elemental line identification, and 2D mapping visualization.
 
 ---
 
@@ -23,6 +23,7 @@ Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) an
 ## Supported Features
 
 - **Hardware-Free Simulation**: `SimulatedSpectrometer` engine mimicking dark counts, integration timing responses, synthetic emission lines, shot noise, and trigger delays.
+- **Automated Multi-Plate Acquisition**: Automated stage control interface supporting 2x2 multi-plate holders (P1–P4, Corning 96-well format), live spectrum canvas, and well status maps.
 - **Spectral Preprocessing**: Savitzky-Golay filtering, Asymmetric Least Squares (ALS) baseline correction, Area normalization, Maximum normalization, and Standard Normal Variate (SNV) transformation.
 - **Elemental Line Identification**: NIST element line database integration (`element_database.csv`), persistent emission line overlays, and peak matching tolerances.
 - **Interactive Visualization**: High-DPI PyQtGraph interactive spectrum canvas, region-of-interest (ROI) selection, peak annotation, and dark spectrum subtraction.
@@ -40,35 +41,42 @@ Scientific instrument-control and Laser-Induced Breakdown Spectroscopy (LIBS) an
 
 ---
 
-### 2. Interactive Periodic Table Element Selector
+### 2. Automated Acquisition Interface (2x2 Multi-Plate Holder Mode)
+
+![Automated Acquisition Interface](docs/img/gui_automated_acquisition_96well_real.png)
+*_Automated acquisition interface running a 2x2 multi-plate holder workflow (Plates P01–P04, Corning 96-well format). Displays live spectrum acquisition canvas (Shot #27), active plate progress map (Plate 1/4, 9/96 wells completed, next target A10), and step-by-step wizard sidebar._*
+
+---
+
+### 3. Interactive Periodic Table Element Selector
 
 ![Interactive Periodic Table Selector](docs/img/gui_periodic_table.png)
 *_Interactive Periodic Table dialog interface enabling element selection, database selection, and ionization state filtering (I, II, III) for NIST line overlay matching._*
 
 ---
 
-### 3. Peak Identification & NIST Database Search
+### 4. Peak Identification & NIST Database Search
 
 ![Peak Identification & NIST Overlay](docs/img/peak_identification_nist.png)
 *_Automated peak detection and NIST elemental line matching for Ti I and Ti II emission lines (e.g. 335 nm, 454 nm, 501 nm) with configurable intensity threshold sliders and round-off error tolerances._*
 
 ---
 
-### 4. Ground-Truth 2D LIBS Spatial Mapping (Decorated Ceramic Tile)
+### 5. Ground-Truth 2D LIBS Spatial Mapping (Decorated Ceramic Tile)
 
 ![Decorated Ceramic Tile 2D Mapping Composite](docs/img/ceramic_tile_2d_mapping_composite.png)
 *_Ground-truth 2D LIBS elemental mapping composite of a decorated ceramic tile sample. Panels display the original sample photograph, co-localized blue pigment elements (Copper Cu vs. Cobalt Co), overglaze dark outline ink (Manganese Mn vs. Lead Pb), and the non-present negative control (Cesium Cs). Colorbar indicates signal-to-noise ratio ($0\text{--}10\sigma$)._*
 
 ---
 
-### 5. Single-Point Annotated LIBS Emission Spectrum
+### 6. Single-Point Annotated LIBS Emission Spectrum
 
 ![Annotated LIBS Emission Spectrum](docs/img/ceramic_tile_annotated_spectrum.png)
 *_Annotated net-intensity spectrum from a ceramic tile sample point across 200–1000 nm, identifying key neutral and ionic emission lines for Cu I (325/327 nm), Co I (358/361 nm), Pb I (368/406 nm), Ca II (393/397 nm), Na I (589 nm), and K I (766/769 nm)._*
 
 ---
 
-### 6. Timing & Signal-to-Noise Optimization Matrix
+### 7. Timing & Signal-to-Noise Optimization Matrix
 
 ![SNR Optimization Heatmap](docs/img/delay_sweep_snr_heatmap.png)
 *_Signal-to-Noise Ratio (SNR) parameter matrix generated across trigger delays (0–32 µs) and integration windows (0.009–1 ms), identifying an optimal acquisition window at 8 µs delay and 0.1 ms integration (SNR 192)._*
