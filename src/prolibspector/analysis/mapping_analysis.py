@@ -2287,7 +2287,7 @@ def _integrate_line(wavelengths: np.ndarray, intensities: np.ndarray, center_nm:
     if y_values.size == 1:
         source_index = int(np.flatnonzero(mask)[0])
         return float(y_values[0] * _local_wavelength_spacing(wavelengths, source_index))
-    trapezoid = getattr(np, "trapezoid", np.trapz)
+    trapezoid = getattr(np, "trapezoid", None) or getattr(np, "trapz", None)
     return float(trapezoid(y_values, x_values))
 
 
@@ -2364,7 +2364,7 @@ def _net_line_area_matrix(
         area = net[:, 0] * pixel_spacing
     else:
         x_values = np.asarray(wavelengths[target_mask], dtype=float)
-        trapezoid = getattr(np, "trapezoid", np.trapz)
+        trapezoid = getattr(np, "trapezoid", None) or getattr(np, "trapz", None)
         area = trapezoid(net, x_values, axis=1)
     # Area noise for independent per-pixel noise scales with sqrt(N) pixels,
     # not the full window width (which would assume perfectly correlated noise).
