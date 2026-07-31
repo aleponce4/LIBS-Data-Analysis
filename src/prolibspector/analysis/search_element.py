@@ -178,7 +178,7 @@ Selectable Elements: Click on any element in the periodic table to select it for
 
 Database Selection: Choose from two databases using the dropdown menu:
 
-1.  **Standard Database (NIST LIBS Database):** This comprehensive database is provided by the National Institute of Standards and Technology and contains atomic and ionic spectral line data, including wavelengths, energy levels, and transition probabilities.
+1.  **Standard Database (NIST LIBS Database):** This reference database is provided by the National Institute of Standards and Technology and contains atomic and ionic spectral line data, including wavelengths, energy levels, and transition probabilities.
 2.  **Persistent Lines Database (USA Army's Foundational Research Laboratory):** This database focuses on persistent or long-lived spectral lines*, which remain visible for extended periods after the laser pulse. These lines can improve element identification accuracy and consistency in various conditions.
 
 ### Persistent/Long-lived Lines**:**
@@ -191,7 +191,7 @@ Persistent lines offer several advantages in LIBS analysis. Firstly, they are le
 
 In atomic and molecular physics, ionization levels refer to the different energy levels that an electron can occupy in an atom or a molecule. When an atom is subjected to a high-energy laser pulse, as in LIBS, electrons are excited from their ground state (level 1) to higher energy states (levels 2, 3, etc.). When these excited electrons return to their lower energy states, they emit light at specific wavelengths, creating the spectral lines we see in LIBS.
 
-By selecting to search only for peaks from ionization levels 1, 2, and 3, you are focusing on the most fundamental and easily identifiable transitions. These transitions are generally more robust and less likely to be affected by environmental factors, leading to more accurate and consistent results.
+By selecting to search only for peaks from ionization levels 1, 2, and 3, you are focusing on the most fundamental and easily identifiable transitions. These transitions are generally more consistent and less likely to be affected by environmental factors, leading to clearer results.
 
 Focusing on these levels can also simplify your data. Higher ionization levels can produce a large number of spectral lines, some of which may overlap with lines from other elements. By limiting the ionization levels, you reduce the number of lines to consider, making it easier to identify and quantify the elements in your sample.  
 """
