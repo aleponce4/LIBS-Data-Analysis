@@ -26,7 +26,7 @@ The Median filter is a type of nonlinear filter that replaces each data point wi
 
 ### Wavelet Transform
 
-The Wavelet transform method, a relatively modern technique, uses wavelets to both decompose and reconstruct the signal. Wavelets, unlike other techniques that use a fixed basis, allow for multi-resolution analysis, meaning that they can analyze the signal at different frequencies with different resolutions. This method is very flexible and can handle a wide variety of noise patterns, making it a robust choice for complex datasets. Unlike many traditional methods, wavelet transform allows for both time and frequency analysis, which can be extremely beneficial for data where non-stationary or transient characteristics are present.
+The Wavelet transform method, a relatively modern technique, uses wavelets to both decompose and reconstruct the signal. Wavelets, unlike other techniques that use a fixed basis, allow for multi-resolution analysis, meaning that they can analyze the signal at different frequencies with different resolutions. This method is very flexible and can handle a wide variety of noise patterns, making it an effective choice for complex datasets. Unlike many traditional methods, wavelet transform allows for both time and frequency analysis, which can be extremely beneficial for data where non-stationary or transient characteristics are present.
 
 Wavelets are particularly well-suited for data where there are abrupt changes or discontinuities, or where the signal frequency changes over time. In the context of LIBS data, this can be advantageous when the spectral data contains rapidly changing features, or when the noise varies across different spectral regions.
 
