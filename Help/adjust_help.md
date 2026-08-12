@@ -22,7 +22,11 @@ To adjust the Y-axis of the plot, enter your desired minimum and maximum relativ
 
 Normalization is a crucial step in data preprocessing and analysis, especially in the context of Laser-Induced Breakdown Spectroscopy (LIBS). It is a process that adjusts the measured values from different scales to a common scale.
 
-In the context of your application, normalization adjusts the relative intensity values (Y-axis) of your spectral data such that they fall within a range between 0 and 1. This helps in ensuring that the relative intensities are comparable, thus allowing for easier interpretation and analysis of the data.
+In the context of your application, normalization rescales the relative intensity values (Y-axis) of your spectral data so that spectra recorded under different conditions become comparable. Three methods are available:
+
+-   **Min-Max**: maps the spectrum onto the range 0 to 1 using its own minimum and maximum.
+-   **Total Intensity**: divides by the summed intensity (area), so the spectrum describes how the signal is distributed across wavelengths.
+-   **SNV** (Standard Normal Variate): subtracts the mean and divides by the standard deviation. This removes shot-to-shot multiplicative differences such as varying pulse energy or detector gain without needing a reference line. SNV output is zero-centred and dimensionless, so it contains negative values and is a comparison aid rather than an intensity measurement.
 
 The purpose of normalization in LIBS data is multi-fold:
 
