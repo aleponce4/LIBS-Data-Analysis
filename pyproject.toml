@@ -56,6 +56,23 @@ full = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# There is deliberately no [tool.setuptools.package-data] section, and adding
+# one would not help. The bundled assets - Icons/, Help/, element_database.csv,
+# persistent_lines.csv and calibration_data_library.csv - live at the repository
+# root, beside src/, not inside the prolibspector package. package-data can only
+# ship files that live inside a package, and core.paths.source_root() resolves to
+# the repository root rather than to the package directory, so the code would not
+# read a packaged copy even if one were installed.
+#
+# Consequence: only an editable install ("pip install -e .") produces a working
+# application. A plain "pip install ." installs importable modules whose asset
+# root resolves to the interpreter's library directory, where no assets exist.
+#
+# Making "pip install ." work means moving those five assets inside
+# src/prolibspector/ and repointing resource_root() at the package directory
+# (keeping working_root()/settings_dir() at a writable location). That is a
+# deliberate restructure, not a config tweak, so it is left to the maintainer.
+
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]

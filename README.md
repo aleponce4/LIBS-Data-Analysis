@@ -102,9 +102,12 @@ Two optional features have optional dependencies: wavelet denoising needs
 pip install -e ".[full]"
 ```
 
-An editable install is used above because the bundled data directories
+The editable install (`-e`) is required, not a convenience. The bundled assets
 (`Icons/`, `Help/`, `element_database.csv`, `persistent_lines.csv`,
-`calibration_data_library.csv`) live at the repository root, alongside `src/`.
+`calibration_data_library.csv`) live at the repository root alongside `src/`
+rather than inside the package, and the application resolves them relative to
+that root. A plain `pip install .` will import but will not find its icons or
+spectral databases, so run the application from a checkout.
 
 ### Running the Application
 
