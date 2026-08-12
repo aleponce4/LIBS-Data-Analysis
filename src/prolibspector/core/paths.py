@@ -9,7 +9,16 @@ from pathlib import Path
 
 
 def source_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    """Return the project root that owns the bundled data directories.
+
+    Layout is ``<root>/src/prolibspector/core/paths.py``, so the root is four
+    ``parents`` up. It must be the repository root and not ``src/`` because the
+    shipped assets - ``Icons/``, ``Help/``, ``element_database.csv``,
+    ``persistent_lines.csv``, ``calibration_data_library.csv`` and
+    ``.libs_settings/`` - all live beside ``src/``, not inside the package.
+    Resolving to ``src/`` silently broke every icon and data-file load.
+    """
+    return Path(__file__).resolve().parents[3]
 
 
 def resource_root() -> Path:

@@ -6,6 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from prolibspector.core.paths import resource_path
+from prolibspector.core.ui_theme import current_theme_name
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    import tkinter as tk
+
 try:
     from PIL import Image, ImageTk
     RESAMPLE = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
