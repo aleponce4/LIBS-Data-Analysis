@@ -30,9 +30,25 @@ def log_error_to_file(error_message: str, file_name: str = "error_log.txt") -> P
 
 
 def global_exception_handler(exc_type, value, tb) -> None:
+    """Log the traceback to file AND print it to stderr.
+
+    The previous version printed only "An error occurred. Please check
+    error_log.txt." and swallowed the traceback. That is how this application
+    shipped with eleven missing imports and an unconditional NameError: the
+    failures were invisible. Always show the real traceback.
+    """
     error_message = "".join(traceback.format_exception(exc_type, value, tb))
-    log_error_to_file(error_message)
-    print("An error occurred. Please check error_log.txt.")
+
+    try:
+        error_path = log_error_to_file(error_message)
+    except OSError as log_exc:  # never let logging hide the original failure
+        error_path = None
+        print(f"(could not write error log: {log_exc})", file=sys.stderr)
+
+    sys.stderr.write(error_message)
+    if error_path is not None:
+        print(f"The traceback above was also written to {error_path}", file=sys.stderr)
+    sys.stderr.flush()
 
 
 def smoke_check() -> dict[str, str]:
