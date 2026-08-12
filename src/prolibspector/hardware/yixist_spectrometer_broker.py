@@ -38,10 +38,11 @@ class YixistSpectrometerBrokerClient:
     serial_number = "N/A"
     dll_path = None
     dll_version = None
-    device_info: dict = {}
 
     def __init__(self, device_index: int = 0) -> None:
         self.device_index = int(device_index)
+        # Per-instance so it can never be shared across clients.
+        self.device_info: dict = {}
 
     @property
     def is_connected(self) -> bool:
