@@ -778,24 +778,6 @@ def _open_mapping_element_selector(app) -> None:
     )
 
 
-def create_acquisition_buttons(app):
-    buttons_frame = ttk.LabelFrame(app.root.sidebar_frame)
-    buttons_frame.grid(row=1, column=0, padx=20, pady=2)
-
-    icon_size = (40, 40)
-    for i in range(5):
-        btn = ttk.Button(
-            buttons_frame,
-            text=f"Placeholder Button {i + 1}",
-            compound="left",
-            style="LeftAligned.TButton",
-            width=20,
-        )
-        _configure_icon(btn, "Import_icon.png", icon_size)
-        btn.grid(row=i, column=0, padx=10, pady=15)
-    return buttons_frame
-
-
 def create_sidebar(app):
     scale = ui_scale_for_widget(app.root)
     app.data_action_buttons = []
