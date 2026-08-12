@@ -1,20 +1,7 @@
-"""Automated-run launch gating - private edition feature.
+﻿"""PUBLIC-EDITION STUB.
 
-PUBLIC-EDITION STUB
-===================
-In the private ProLIBSpector edition this module is the launch gate for
-automated runs. It takes the automation UI state and decides whether a dry run
-or a guarded firing run may start: safety-checklist completeness, plate-model
-verification acknowledgement, device pairing (both simulated or both real),
-resume-vs-restart selection, run-directory allocation for simulation runs, and
-spectra-QC availability. Every refusal comes back as a ``block_reason`` the
-sidebar displays.
-
-This module exists so ``acquisition/controllers.py`` imports cleanly. Here the
-gate is always closed: both planners return a launch plan with ``ready`` and
-``can_start`` false and the private-edition reason as ``block_reason``, which
-the caller passes straight to ``_show_automation_launch_block()``. No run is
-ever started and no run directory is allocated.
+This feature is not included in the public edition. The interface below imports
+cleanly and reports the feature as unavailable rather than failing silently.
 """
 
 from __future__ import annotations
@@ -115,3 +102,4 @@ __all__ = [
     "plan_automation_dry_run_launch",
     "plan_automation_start_launch",
 ]
+

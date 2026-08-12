@@ -1,19 +1,7 @@
-"""2D mapping-grid run configuration - private edition acquisition feature.
+﻿"""PUBLIC-EDITION STUB.
 
-PUBLIC-EDITION STUB
-===================
-Note the split: *analysing* a 2D map is a full public feature
-(``analysis/mapping_analysis.py`` loads mapping runs, builds element maps and
-exports them). What is private is *acquiring* one, because that means rastering a
-Class-4 laser across a sample on the motorised stage via the unpublished GRBL
-driver (see ``hardware/grbl_laser.py``).
-
-So this module keeps the configuration record - :class:`MappingGridConfig` is a
-real dataclass, and ``acquisition/controllers.py`` relies on ``isinstance``
-checks against it to distinguish mapping runs from plate runs - while the
-planner and resume loader report the private-edition requirement:
-``mapping_plan_details`` returns an unavailable details record and
-``load_mapping_resume_state_for_config`` returns ``None``.
+This feature is not included in the public edition. The interface below imports
+cleanly and reports the feature as unavailable rather than failing silently.
 """
 
 from __future__ import annotations
@@ -130,3 +118,4 @@ __all__ = [
     "load_mapping_resume_state_for_config",
     "mapping_plan_details",
 ]
+

@@ -1,26 +1,7 @@
-"""GRBL laser-stage control - real driver not included in the public edition.
+﻿"""PUBLIC-EDITION STUB.
 
-PUBLIC-EDITION STUB
-===================
-The private ProLIBSpector edition drives the laser stage over a GRBL serial
-link: homing with limit-switch verification, alarm ($X) recovery, synchronous
-motion completion, gated laser firing interlocked with the safety checklist, and
-per-pulse power/duration control. Firing a Class-4 laser from software is the
-part of this product that carries real physical risk, so the driver is not
-published.
-
-Two classes live here:
-
-* :class:`GrblLaserController` - unavailable-device shim. It imports cleanly and
-  raises :class:`GrblLaserError` from ``connect()``. It will not open a serial
-  port and cannot emit motion or laser commands.
-* :class:`SimulatedGrblLaserController` - a genuine, fully working software
-  simulation. It tracks position, feed rate and laser state in memory so the
-  motion/geometry layers can be exercised with no hardware and no beam. It is
-  clearly labelled as simulated and never touches a serial port.
-
-The probe helpers report an honest "driver not included" result rather than
-guessing at a controller's state.
+This feature is not included in the public edition. The interface below imports
+cleanly and reports the feature as unavailable rather than failing silently.
 """
 
 from __future__ import annotations
@@ -242,3 +223,4 @@ __all__ = [
     "probe_grbl_controller",
     "unlock_and_reprobe_grbl_controller",
 ]
+

@@ -1,25 +1,7 @@
-"""YiXist / YXSP spectrometer backend - not included in the public edition.
+﻿"""PUBLIC-EDITION STUB.
 
-PUBLIC-EDITION STUB
-===================
-The private ProLIBSpector edition drives YiXist/YXSP spectrometers through the
-vendor's ``spectrometer.dll`` via ctypes: SDK COM-port enumeration, per-device
-metadata probing, hardware external-trigger arming, programmable trigger delay
-(SDK >= 1.2.7), and DLL identity hashing for the reproducibility manifest. That
-backend depends on a redistributable vendor SDK and on hardware-specific
-timing work, and is not part of the public edition.
-
-This module exists so the public edition imports and runs. It reports the
-device family as unavailable and says why. It never claims to connect:
-
-* ``yixist_supported()`` returns ``False``, which disables the YiXist button in
-  the connection dialog.
-* ``YixistSpectrometerModule.diagnose()`` returns a well-formed report whose
-  notes state plainly that the driver is not bundled, so the diagnostics dialog
-  renders normally instead of showing an empty tab.
-* ``YixistSpectrometerModule.connect()`` raises ``NoDeviceError``.
-
-Use Simulation Mode, or the private edition, for YiXist hardware.
+This feature is not included in the public edition. The interface below imports
+cleanly and reports the feature as unavailable rather than failing silently.
 """
 
 from __future__ import annotations
@@ -131,3 +113,4 @@ __all__ = [
     "yixist_dll_identity",
     "yixist_supported",
 ]
+

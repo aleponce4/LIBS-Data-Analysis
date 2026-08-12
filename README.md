@@ -1,4 +1,4 @@
-# LIBS Spectroscopy Workbench
+﻿# LIBS Spectroscopy Workbench
 
 [![CI](https://github.com/aleponce4/libs-spectroscopy-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/aleponce4/libs-spectroscopy-workbench/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -9,9 +9,9 @@
 The LIBS Spectroscopy Workbench is a scientific software platform for Laser-Induced Breakdown Spectroscopy (LIBS) data processing, spectral visualization, elemental line identification, and 2D spatial mapping.
 
 > **Product Scope & Relationship**  
-> This repository is the public edition of a larger private product (`ProLIBSpector`), which supports Ocean Optics, Thorlabs CCS, and YiXist spectrometers, GRBL-controlled stages, and pulsed-laser triggering. This public edition provides the generic interfaces, simulated hardware engines, spectral analysis algorithms, interactive visualization, and selected nonconfidential acquisition workflows. Commercial classification models and physical driver binaries are maintained separately.
+> This repository is the public edition of a larger private product (`ProLIBSpector`), which adds support for physical instrument hardware. This public edition provides the generic interfaces, simulated hardware engines, spectral analysis algorithms, interactive visualization, and selected nonconfidential acquisition workflows. Commercial classification models and physical driver binaries are maintained separately.
 >
-> **Not in this edition**, and reported as such in the UI rather than failing silently: vendor spectrometer drivers (Ocean Optics via seabreeze, Thorlabs CCS via TLCCS/NI-VISA, YiXist via its vendor SDK), the GRBL laser-stage driver, automated laser-stage runs, automated 2D mapping *acquisition*, unattended multi-plate acquisition across a plate holder, and the trained spectra-readiness calibration. Analysing existing 2D mapping runs is fully supported here; only acquiring them requires the private edition. Modules standing in for these features carry a `PUBLIC-EDITION STUB` header stating what the private version does.
+> **Not in this edition**, and reported as such in the UI rather than failing silently: vendor spectrometer drivers, the laser-stage driver, automated laser-stage runs, automated 2D mapping *acquisition*, unattended multi-plate acquisition across a plate holder, and the trained spectra-readiness calibration. Analysing existing 2D mapping runs is fully supported here; only acquiring them requires the private edition. Modules standing in for these features carry a `PUBLIC-EDITION STUB` header stating what the private version does.
 >
 > The Python package is still importable as `prolibspector`, so existing code and saved settings keep working.
 
@@ -56,7 +56,7 @@ The LIBS Spectroscopy Workbench is a scientific software platform for Laser-Indu
 
 *Illustrative figure. It was produced from a measurement run on the private edition's hardware; the source spectra and the script that rendered the composite are not part of this repository, so the colorbar values are not reproducible from what is published here.*
 
-> For additional figures (Periodic Table selector, annotated spectra, timing and signal-to-noise matrices), file format specifications, and caching internals, see the [Technical Gallery & Architecture Guide](docs/gallery.md).
+> For additional figures (Periodic Table selector, annotated spectra), file format specifications, and caching internals, see the [Technical Gallery & Architecture Guide](docs/gallery.md).
 
 ---
 
@@ -146,3 +146,4 @@ Elemental line search and peak matching rely on an internal reference table deri
 ## License
 
 This public edition is released under the [GNU General Public License v3.0](LICENSE).
+

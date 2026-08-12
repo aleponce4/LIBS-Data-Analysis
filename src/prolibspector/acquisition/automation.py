@@ -1,24 +1,7 @@
-"""Automated laser-stage run planning - private edition feature.
+﻿"""PUBLIC-EDITION STUB.
 
-PUBLIC-EDITION STUB
-===================
-The private ProLIBSpector edition plans automated runs across one or more plates
-on a motorised laser stage: it converts plate-model geometry plus bed limits and
-orientation into an ordered list of stage targets, persists per-target progress
-so an interrupted run resumes on the exact next target, and enforces the safety
-checklist before any target is fired. That planner is coupled to the GRBL laser
-driver, which is not published (see ``hardware/grbl_laser.py``).
-
-This module exists so ``acquisition/controllers.py`` imports cleanly. It
-provides the orientation constants and honest no-op planners:
-``automation_plan_details`` returns a details record that states the feature is
-private, and ``load_resume_state_for_config`` returns ``None`` (no saved state
-can exist, because no automated run can be performed here).
-
-Nothing in this module pretends an automated run is possible. The public
-edition's automated-acquisition view is not built, so these entry points are
-reachable only through code paths the public UI never exposes; if one is ever
-reached, it reports the private-edition requirement rather than failing oddly.
+This feature is not included in the public edition. The interface below imports
+cleanly and reports the feature as unavailable rather than failing silently.
 """
 
 from __future__ import annotations
@@ -90,3 +73,4 @@ __all__ = [
     "automation_plan_details",
     "load_resume_state_for_config",
 ]
+

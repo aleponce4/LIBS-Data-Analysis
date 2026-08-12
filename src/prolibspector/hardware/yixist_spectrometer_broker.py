@@ -1,19 +1,7 @@
-"""Out-of-process YiXist SDK broker client - not in the public edition.
+﻿"""PUBLIC-EDITION STUB.
 
-PUBLIC-EDITION STUB
-===================
-The private ProLIBSpector edition isolates the YiXist/YXSP vendor SDK in a
-separate broker process and talks to it over a local pipe. That design exists
-because the vendor DLL can wedge or crash on some firmware revisions; keeping it
-out-of-process lets the GUI survive, reap an orphaned broker, and cancel a
-pending read without losing the Tk main loop. The broker, its wire protocol and
-the crash-recovery logic all live in the private edition.
-
-This module exists so ``acquisition/controllers.py`` imports cleanly. The client
-below never spawns a broker and never claims a connection: ``connect()`` raises
-``NoDeviceError`` with the reason, which the acquisition view surfaces through
-its normal connection-failure path (including the diagnostics dialog and its
-Simulation fallback).
+This feature is not included in the public edition. The interface below imports
+cleanly and reports the feature as unavailable rather than failing silently.
 """
 
 from __future__ import annotations
@@ -71,3 +59,4 @@ class YixistSpectrometerBrokerClient:
 
 
 __all__ = ["BROKER_UNAVAILABLE_REASON", "YixistSpectrometerBrokerClient"]
+

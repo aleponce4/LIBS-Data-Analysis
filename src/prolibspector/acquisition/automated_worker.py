@@ -1,23 +1,7 @@
-"""Automated acquisition worker - private edition feature.
+﻿"""PUBLIC-EDITION STUB.
 
-PUBLIC-EDITION STUB
-===================
-In the private ProLIBSpector edition this worker owns the automated run loop:
-for every planned stage target it verifies the safety checklist, moves the GRBL
-stage, arms the spectrometer's hardware trigger, fires the laser, persists the
-shot, and records per-target progress so an interrupted run resumes exactly
-where it stopped. It also implements the dry run (full motion, laser inhibited)
-and the laser pattern test.
-
-That loop cannot be published: it fires a Class-4 laser through the unpublished
-GRBL driver (see ``hardware/grbl_laser.py``).
-
-This module exists so ``acquisition/controllers.py`` imports cleanly. The worker
-class below refuses construction with a clear message instead of starting a
-thread that could never do its job, and ``prepare_grbl_controller`` refuses to
-prepare a controller for motion. The public edition's acquisition view uses
-``acquisition.worker.AcquisitionWorker``, which is complete and fully
-functional for manual and simulated acquisition.
+This feature is not included in the public edition. The interface below imports
+cleanly and reports the feature as unavailable rather than failing silently.
 """
 
 from __future__ import annotations
@@ -99,3 +83,4 @@ __all__ = [
     "AutomatedAcquisitionWorker",
     "prepare_grbl_controller",
 ]
+

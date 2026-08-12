@@ -1,4 +1,4 @@
-"""Platform and Tk runtime helpers."""
+﻿"""Platform and Tk runtime helpers."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from prolibspector.core.paths import resource_path
 
 
 APP_DIR_NAME = "prolibspector"
-WINDOWS_APP_USER_MODEL_ID = "Onteko.ProLIBSpector"
+WINDOWS_APP_USER_MODEL_ID = "LibsSpectroscopyWorkbench"
 _WINDOWS_APP_USER_MODEL_ID_SET = False
 _WINDOWS_HICON_CACHE: dict[tuple[str, int, int], int] = {}
 
@@ -244,3 +244,4 @@ def user_data_dir() -> Path:
     if xdg_data_home:
         return Path(xdg_data_home) / APP_DIR_NAME
     return Path.home() / ".local" / "share" / APP_DIR_NAME
+

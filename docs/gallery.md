@@ -1,4 +1,4 @@
-# Technical Gallery & Extended Architecture
+﻿# Technical Gallery & Extended Architecture
 
 This document provides supplementary visual case studies, file format specifications, caching internals, and hardware integration details for the LIBS Spectroscopy Workbench.
 
@@ -24,26 +24,7 @@ The figures below are illustrative. They were produced from measurement runs on 
 
 ---
 
-### 3. Timing & Signal-to-Noise Optimization Matrix
-
-![SNR Optimization Heatmap](img/delay_sweep_snr_heatmap.png)
-
-*Signal-to-Noise Ratio (SNR) parameter matrix across trigger delays (0-32 µs) and integration windows (0.009-1 ms) for one sample on one instrument, with the best window in that sweep at 8 µs delay and 0.1 ms integration. Illustrative: this is a single unpublished run, not a benchmark, and the quoted SNR figure is specific to that sample and instrument.*
-
----
-
-## Private Product Hardware Integrations
-
-The private edition (`ProLIBSpector`) supports the following commercial hardware interfaces. None of these drivers ship in this repository:
-
-- **Spectrometers**:
-  - **Ocean Optics**: USB2000+, HR4000, Flame, Maya2000 Pro, Spark (via SeaBreeze C-library and PyUSB backends).
-  - **Thorlabs CCS Series**: CCS100, CCS125, CCS150, CCS175, CCS200 compact spectrometers (via `TLCCS` C-DLL and VISA driver wrappers).
-  - **YiXist YSM Series**: YSM-8111-06-01 high-resolution spectrometers (via C++ DLL wrapper interfaces).
-- **Motorized Stage Motion Control (X-Y-Z)**:
-  - **GRBL 1.1 Controllers**: Multi-axis stepper motor stage positioning via serial GRBL protocol (X-Y spatial rastering, Z-axis focal positioning, microplate well alignment, teach-point calibration).
-- **Pulsed Ablation Lasers**:
-  - **Q-Switched Pulsed Lasers**: Monport K40 relay, LaserArt 10 Hz Nd:YAG laser control, external pulse generator synchronization, and foot-switch firing semantics.
+Physical instrument drivers are maintained separately and are not part of this edition.
 
 ---
 
