@@ -45,6 +45,26 @@ def normalize_total_intensity(y_data, eps=1e-12, clip_negative=True):
     return y / (s + eps)
 
 
+def normalize_snv(y_data):
+    """
+    Standard Normal Variate (SNV) transformation: (y - mean(y)) / std(y).
+
+    Centres the spectrum on zero and scales it to unit standard deviation, which
+    removes multiplicative scaling differences between shots (varying pulse
+    energy, coupling efficiency, or detector gain) without needing a reference
+    line. The result is dimensionless and contains negative values, so it is a
+    comparison aid rather than an intensity measurement.
+
+    A completely flat trace has zero variance and no meaningful SNV; it is
+    returned as all zeros rather than dividing by zero.
+    """
+    y = np.asarray(y_data, dtype=float)
+    std = y.std()
+    if std == 0:
+        return np.zeros_like(y)
+    return (y - y.mean()) / std
+
+
 # Main function for adjusting the plot
 def adjust_plot(app, ax):
 
@@ -68,6 +88,15 @@ def adjust_plot(app, ax):
             app.y_data = y_data
             app.line.set_ydata(y_data)
             ax.set_ylim(0, y_data.max() * 1.05)
+        elif method == "SNV":
+            y_data = normalize_snv(app._original_y_data)
+            app.y_data = y_data
+            app.line.set_ydata(y_data)
+            # SNV is zero-centred, so the lower bound must follow the data
+            # rather than being pinned to zero.
+            low, high = float(y_data.min()), float(y_data.max())
+            margin = max((high - low) * 0.05, 1e-6)
+            ax.set_ylim(low - margin, high + margin)
         else:
             # "None" – restore original data
             app.y_data = app._original_y_data.copy()
@@ -111,7 +140,7 @@ def adjust_plot(app, ax):
     ttk.Label(tab1, text="Normalization:").grid(row=2, column=0, padx=(20, 5), pady=(10, 10), sticky="e")
     normalize_var = tk.StringVar(value="None")
     normalize_combo = ttk.Combobox(tab1, textvariable=normalize_var, state="readonly", width=18,
-                                   values=["None", "Min-Max", "Total Intensity"])
+                                   values=["None", "Min-Max", "Total Intensity", "SNV"])
     normalize_combo.grid(row=2, column=1, padx=(5, 20), pady=(10, 10), sticky="w")
 
     # Create variables to store the axis limits
@@ -271,7 +300,11 @@ To adjust the Y-axis of the plot, enter your desired minimum and maximum relativ
 
 Normalization is a crucial step in data preprocessing and analysis, especially in the context of Laser-Induced Breakdown Spectroscopy (LIBS). It is a process that adjusts the measured values from different scales to a common scale.
 
-In the context of your application, normalization adjusts the relative intensity values (Y-axis) of your spectral data such that they fall within a range between 0 and 1. This helps in ensuring that the relative intensities are comparable, thus allowing for easier interpretation and analysis of the data.
+In the context of your application, normalization rescales the relative intensity values (Y-axis) of your spectral data so that spectra recorded under different conditions become comparable. Three methods are available:
+
+-   **Min-Max**: maps the spectrum onto the range 0 to 1 using its own minimum and maximum.
+-   **Total Intensity**: divides by the summed intensity (area), so the spectrum describes how the signal is distributed across wavelengths.
+-   **SNV** (Standard Normal Variate): subtracts the mean and divides by the standard deviation. This removes shot-to-shot multiplicative differences such as varying pulse energy or detector gain without needing a reference line. SNV output is zero-centred and dimensionless, so it contains negative values and is a comparison aid rather than an intensity measurement.
 
 The purpose of normalization in LIBS data is multi-fold:
 
