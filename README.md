@@ -1,4 +1,4 @@
-# ProLIBSpector (Public Edition)
+# LIBS Spectroscopy Workbench
 
 [![CI](https://github.com/aleponce4/libs-spectroscopy-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/aleponce4/libs-spectroscopy-workbench/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -6,12 +6,14 @@
 
 ## Overview
 
-ProLIBSpector is a scientific software platform for Laser-Induced Breakdown Spectroscopy (LIBS) data processing, spectral visualization, elemental line identification, and 2D spatial mapping.
+The LIBS Spectroscopy Workbench is a scientific software platform for Laser-Induced Breakdown Spectroscopy (LIBS) data processing, spectral visualization, elemental line identification, and 2D spatial mapping.
 
 > **Product Scope & Relationship**  
-> The complete private product (`ProLIBSpector`) supports Ocean Optics, Thorlabs CCS, and YiXist spectrometers, GRBL-controlled stages, and pulsed-laser triggering. This public edition provides the generic interfaces, simulated hardware engines, spectral analysis algorithms, interactive visualization, and selected nonconfidential acquisition workflows. Commercial classification models and physical driver binaries are maintained separately.
+> This repository is the public edition of a larger private product (`ProLIBSpector`), which supports Ocean Optics, Thorlabs CCS, and YiXist spectrometers, GRBL-controlled stages, and pulsed-laser triggering. This public edition provides the generic interfaces, simulated hardware engines, spectral analysis algorithms, interactive visualization, and selected nonconfidential acquisition workflows. Commercial classification models and physical driver binaries are maintained separately.
 >
-> **Not in this edition**, and reported as such in the UI rather than failing silently: vendor spectrometer drivers (Ocean Optics via seabreeze, Thorlabs CCS via TLCCS/NI-VISA, YiXist via its vendor SDK), the GRBL laser-stage driver, automated laser-stage runs, automated 2D mapping *acquisition*, and the trained spectra-readiness calibration. Analysing existing 2D mapping runs is fully supported here; only acquiring them requires the private edition. Modules standing in for these features carry a `PUBLIC-EDITION STUB` header stating what the private version does.
+> **Not in this edition**, and reported as such in the UI rather than failing silently: vendor spectrometer drivers (Ocean Optics via seabreeze, Thorlabs CCS via TLCCS/NI-VISA, YiXist via its vendor SDK), the GRBL laser-stage driver, automated laser-stage runs, automated 2D mapping *acquisition*, unattended multi-plate acquisition across a plate holder, and the trained spectra-readiness calibration. Analysing existing 2D mapping runs is fully supported here; only acquiring them requires the private edition. Modules standing in for these features carry a `PUBLIC-EDITION STUB` header stating what the private version does.
+>
+> The Python package is still importable as `prolibspector`, so existing code and saved settings keep working.
 
 ---
 
@@ -20,9 +22,9 @@ ProLIBSpector is a scientific software platform for Laser-Induced Breakdown Spec
 - **Hardware Simulation Engine**: `SimulatedSpectrometer` engine mimicking physical nanosecond plasma emission decay, dark counts, exposure integration timing, shot noise, and trigger delay responses.
 - **High-Throughput Plate Workflow**: Plate autosave for 6/12/24/48/96/384-well formats with configurable shots-per-well and row- or column-major ordering, a live well-status plate map, per-shot discard, specific-well repair passes, atomic run-state persistence, and resume of an interrupted plate (from saved state or by scanning the folder).
 - **Spectra Readiness QC**: Deterministic per-shot gating on detector saturation, signal-to-noise, and flat-trace detection, with a per-shot CSV and one-click requeueing of non-passing wells.
-- **Spectral Preprocessing Engine**: Savitzky-Golay filtering, Asymmetric Least Squares (ALS) baseline correction, Area normalization, Maximum normalization, and Standard Normal Variate (SNV) transformation.
-- **NIST Line Database Search**: Internal reference database derived from NIST Atomic Spectra Database (ASD) data covering neutral and ionic species ($I, II, III$).
-- **Interactive Visualization**: High-DPI Tkinter/Matplotlib interactive spectrum canvas, region-of-interest (ROI) selection, peak annotation, and dark spectrum subtraction.
+- **Spectral Preprocessing Engine**: Savitzky-Golay and Gaussian smoothing, Asymmetric Least Squares (ALS) baseline correction, and three normalizations - min-max, total-intensity (area), and Standard Normal Variate (SNV).
+- **NIST Line Database Search**: Internal reference database derived from NIST Atomic Spectra Database (ASD) data covering neutral and ionic species (I, II, III).
+- **Interactive Visualization**: High-DPI Tkinter/ttk and Matplotlib spectrum canvas with axis and wavelength-range controls, automated peak detection, and NIST line annotation with overlap reduction.
 - **Reliable Asynchronous Persistence**: Bounded background save queue with ordered single-writer persistence, backpressure, failure propagation, and drain-before-finalization behavior.
 - **Spatially Resolved 2D Mapping**: Grid spectrum visualization, multi-element evidence fusion, and peak intensity heatmap rendering.
 
@@ -33,30 +35,28 @@ ProLIBSpector is a scientific software platform for Laser-Induced Breakdown Spec
 ### 1. Main Application Interface (Analysis Mode)
 
 ![Main Application Interface](docs/img/main_gui_analysis.png)
-*_Main application interface in Analysis Mode displaying an imported reference Titanium spectrum (200–880 nm) with interactive curve controls, spectrum parameter sidebar, and plot navigation tools._*
+
+*Main application interface in Analysis Mode displaying an imported reference Titanium spectrum (200-880 nm) with interactive curve controls, spectrum parameter sidebar, and plot navigation tools.*
 
 ---
 
-### 2. Automated Acquisition Interface (2x2 Multi-Plate Holder Mode)
-
-![Automated Acquisition Interface](docs/img/gui_automated_acquisition_96well_real.png)
-*_Automated acquisition interface running a 2x2 multi-plate holder workflow (Plates P01–P04, Corning 96-well format). Displays live spectrum acquisition canvas (Shot #27), active plate progress map (Plate 1/4, 9/96 wells completed, next target A10), and step-by-step wizard sidebar._*
-
----
-
-### 3. Peak Identification & NIST Database Search
+### 2. Peak Identification & NIST Database Search
 
 ![Peak Identification & NIST Overlay](docs/img/peak_identification_nist.png)
-*_Automated peak detection and NIST elemental line matching for Ti I and Ti II emission lines (e.g. 335 nm, 454 nm, 501 nm) with configurable intensity threshold sliders and round-off error tolerances._*
+
+*Automated peak detection and NIST elemental line matching for Ti I and Ti II emission lines (e.g. 335 nm, 454 nm, 501 nm) with configurable intensity threshold sliders and round-off error tolerances.*
 
 ---
 
-### 4. Spatially Resolved 2D LIBS Mapping Demonstration (Decorated Ceramic Tile)
+### 3. Spatially Resolved 2D LIBS Mapping Demonstration (Decorated Ceramic Tile)
 
 ![Decorated Ceramic Tile 2D Mapping Composite](docs/img/ceramic_tile_2d_mapping_composite.png)
-*_Spatially resolved 2D LIBS elemental mapping composite of a decorated ceramic tile sample. Panels display the original sample photograph alongside corresponding spatial regions for blue pigments (Copper Cu, Cobalt Co), overglaze dark outline ink (Manganese Mn, Lead Pb), and non-present control (Cesium Cs). Colorbar indicates signal-to-noise ratio ($0\text{--}10\sigma$)._*
 
-> For additional figures (Periodic Table selector, annotated spectra, SNR timing matrices), file format specifications, and caching internals, see the [Technical Gallery & Architecture Guide](docs/gallery.md).
+*Spatially resolved 2D LIBS elemental mapping composite of a decorated ceramic tile sample. Panels display the original sample photograph alongside corresponding spatial regions for blue pigments (Copper Cu, Cobalt Co), overglaze dark outline ink (Manganese Mn, Lead Pb), and non-present control (Cesium Cs).*
+
+*Illustrative figure. It was produced from a measurement run on the private edition's hardware; the source spectra and the script that rendered the composite are not part of this repository, so the colorbar values are not reproducible from what is published here.*
+
+> For additional figures (Periodic Table selector, annotated spectra, timing and signal-to-noise matrices), file format specifications, and caching internals, see the [Technical Gallery & Architecture Guide](docs/gallery.md).
 
 ---
 

@@ -1,6 +1,8 @@
-# ProLIBSpector Technical Gallery & Extended Architecture
+# Technical Gallery & Extended Architecture
 
-This document provides supplementary visual case studies, file format specifications, caching internals, and hardware integration details for the ProLIBSpector platform.
+This document provides supplementary visual case studies, file format specifications, caching internals, and hardware integration details for the LIBS Spectroscopy Workbench.
+
+The figures below are illustrative. They were produced from measurement runs on the private edition's hardware; the source spectra and the plotting scripts are not part of this repository, so the numbers quoted in the captions cannot be regenerated from what is published here. They are shown to document what the interface and analysis output look like, not as benchmark results.
 
 ---
 
@@ -9,34 +11,37 @@ This document provides supplementary visual case studies, file format specificat
 ### 1. Interactive Periodic Table Element Selector
 
 ![Interactive Periodic Table Selector](img/gui_periodic_table.png)
-*_Interactive Periodic Table dialog interface enabling element selection, database selection, and ionization state filtering (I, II, III) for NIST line overlay matching._*
+
+*Interactive Periodic Table dialog interface enabling element selection, database selection, and ionization state filtering (I, II, III) for NIST line overlay matching.*
 
 ---
 
 ### 2. Single-Point Annotated LIBS Emission Spectrum
 
 ![Annotated LIBS Emission Spectrum](img/ceramic_tile_annotated_spectrum.png)
-*_Annotated net-intensity spectrum from a ceramic tile sample point across 200–1000 nm, identifying key neutral and ionic emission lines for Cu I (325/327 nm), Co I (358/361 nm), Pb I (368/406 nm), Ca II (393/397 nm), Na I (589 nm), and K I (766/769 nm)._*
+
+*Annotated net-intensity spectrum from a ceramic tile sample point across 200-1000 nm, identifying key neutral and ionic emission lines for Cu I (325/327 nm), Co I (358/361 nm), Pb I (368/406 nm), Ca II (393/397 nm), Na I (589 nm), and K I (766/769 nm).*
 
 ---
 
 ### 3. Timing & Signal-to-Noise Optimization Matrix
 
 ![SNR Optimization Heatmap](img/delay_sweep_snr_heatmap.png)
-*_Signal-to-Noise Ratio (SNR) parameter matrix generated across trigger delays (0–32 µs) and integration windows (0.009–1 ms), identifying an optimal acquisition window at 8 µs delay and 0.1 ms integration (SNR 192)._*
+
+*Signal-to-Noise Ratio (SNR) parameter matrix across trigger delays (0-32 µs) and integration windows (0.009-1 ms) for one sample on one instrument, with the best window in that sweep at 8 µs delay and 0.1 ms integration. Illustrative: this is a single unpublished run, not a benchmark, and the quoted SNR figure is specific to that sample and instrument.*
 
 ---
 
 ## Private Product Hardware Integrations
 
-The complete private product (`ProLIBSpector`) supports the following commercial hardware interfaces:
+The private edition (`ProLIBSpector`) supports the following commercial hardware interfaces. None of these drivers ship in this repository:
 
 - **Spectrometers**:
   - **Ocean Optics**: USB2000+, HR4000, Flame, Maya2000 Pro, Spark (via SeaBreeze C-library and PyUSB backends).
   - **Thorlabs CCS Series**: CCS100, CCS125, CCS150, CCS175, CCS200 compact spectrometers (via `TLCCS` C-DLL and VISA driver wrappers).
   - **YiXist YSM Series**: YSM-8111-06-01 high-resolution spectrometers (via C++ DLL wrapper interfaces).
-- **Motorized Stage Motion Control ($X\text{--}Y\text{--}Z$)**:
-  - **GRBL 1.1 Controllers**: Multi-axis stepper motor stage positioning via serial GRBL protocol ($X\text{--}Y$ spatial rastering, $Z$-axis focal positioning, microplate well alignment, teach-point calibration).
+- **Motorized Stage Motion Control (X-Y-Z)**:
+  - **GRBL 1.1 Controllers**: Multi-axis stepper motor stage positioning via serial GRBL protocol (X-Y spatial rastering, Z-axis focal positioning, microplate well alignment, teach-point calibration).
 - **Pulsed Ablation Lasers**:
   - **Q-Switched Pulsed Lasers**: Monport K40 relay, LaserArt 10 Hz Nd:YAG laser control, external pulse generator synchronization, and foot-switch firing semantics.
 
@@ -51,9 +56,9 @@ The complete private product (`ProLIBSpector`) supports the following commercial
   - JSON run configuration and calibration snapshots (`_mapping_grid_manifest.json`).
 
 - **Export & Storage Formats**:
-  - **CSV Spectral Files**: Standard 2-column $(\lambda, \text{Intensity})$ and multi-point CSV exports.
+  - **CSV Spectral Files**: Standard 2-column (wavelength, intensity) and multi-point CSV exports.
   - **High-Density Binary Stores**: Chunked binary arrays (`.npy`) for rapid disk write/read during high-speed raster scanning.
-  - **Reproducibility Manifests**: Automated JSON metadata logs containing spectrometer settings, laser energy profiles, timestamped spatial coordinates, and SHA256 data checksums.
+  - **Reproducibility Manifests**: JSON metadata logs containing spectrometer settings and reported identity, operator-entered run metadata such as laser energy, and timestamped spatial coordinates. The signed-manifest format, which adds cryptographic data checksums, is part of the private edition; the public manifests are plain JSON and are not signed.
   - **Graphics & Figures**: Export to high-resolution PNG, PDF, TIFF, and SVG formats via the embedded Matplotlib canvas.
 
 ---
