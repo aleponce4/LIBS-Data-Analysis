@@ -1,3 +1,15 @@
+"""PyInstaller packaging script for the private release build.
+
+NOT a supported public build path. This script expects the maintainer's
+release virtual environment (``LIBS_venv``) and bundles vendor components
+that are not part of the public edition and not declared as dependencies:
+seabreeze, libusb, ttkthemes and scikit-learn. Running it from a plain
+``pip install -e .`` checkout will fail at ``find_release_libusb_dll()``.
+
+The public edition is run from source (see the README quick start); there is
+no published frozen-executable build.
+"""
+
 import os
 import shutil
 import subprocess
@@ -109,8 +121,7 @@ hidden_imports = [
     "seabreeze", "seabreeze.spectrometers", "usb", "usb.core", "usb.backend",
     "usb.backend.libusb1", "usb.backend.libusb0", "usb.backend.openusb",
     "libusb_package",
-    "mode_launcher", "acquisition_app", "acquisition_graph", "acquisition_sidebar",
-    "acquisition_worker", "plate_autosave", "spectrometer", "queue", "threading"
+    "queue", "threading",
 ]
 
 libusb_dll_path = find_release_libusb_dll()
@@ -133,26 +144,10 @@ def build_command(*, mode: str, distpath: str, name: str) -> list[str]:
         f"--add-data={os.path.abspath('persistent_lines.csv')};.",
         f"--add-data={os.path.abspath('calibration_data_library.csv')};.",
 
-        # Add ALL icon files individually (this was the missing piece!)
-        f"--add-data={os.path.abspath('Icons/add_to_library_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/apply_library_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/clean_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/export_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/help_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/Import_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/main_icon.ico')};Icons",
-        f"--add-data={os.path.abspath('Icons/main_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/plot_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/presets_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/savedata_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/search_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/trigger_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/spectrum_icon.png')};Icons",
-        f"--add-data={os.path.abspath('Icons/Onteko_Logo.jpg')};Icons",
-
-        # Add directories
+        # Add whole asset directories. Listing icons one by one used to drift
+        # from what is on disk whenever an icon was added or removed.
+        f"--add-data={os.path.abspath('Icons')};Icons",
         f"--add-data={os.path.abspath('Help')};Help",
-        f"--add-data={os.path.abspath('images')};images",
 
         # Add Tcl/Tk libraries so init.tcl is found at runtime
         f"--add-data={tcl_library_path};lib/tcl8.6",
