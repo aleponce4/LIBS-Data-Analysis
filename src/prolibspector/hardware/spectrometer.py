@@ -24,6 +24,16 @@ class SpectrometerError(Exception):
     pass
 
 
+class NoDeviceError(SpectrometerError):
+    """Raised when no matching spectrometer could be found or opened.
+
+    The acquisition view treats this distinctly from a generic
+    ``SpectrometerError``: it is the "nothing to connect to" case that opens the
+    diagnostics dialog with a Simulation fallback rather than reporting a bug.
+    """
+    pass
+
+
 @dataclass
 class DeviceCapabilities:
     """Read-only description of hardware feature support."""
@@ -133,6 +143,19 @@ SIMULATION_PROFILES = {
         "int_max_us": 65_000_000,
         "trigger_modes": {"normal": 0, "external": 1},
         "trigger_delay_max_us": 1_000_000,
+    },
+    # Thorlabs CCS175 geometry, so a simulated Thorlabs connection reports the
+    # instrument the user actually picked instead of the generic profile.
+    "CCS175": {
+        "model": "CCS175-SIM",
+        "pixels": 3648,
+        "wl_min": 500.0,
+        "wl_max": 1000.0,
+        "max_intensity": 65535,
+        "int_min_us": 10,
+        "int_max_us": 60_000_000,
+        "trigger_modes": {"normal": 0, "external": 1},
+        "trigger_delay_max_us": 0,
     },
 }
 
@@ -319,3 +342,264 @@ class Spectrometer(SimulatedSpectrometer):
 
     def __init__(self, profile_name: str = "Generic"):
         super().__init__(profile=SIMULATION_PROFILES.get(profile_name, SIMULATION_PROFILES["Generic"]))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Acquisition-facing device modules
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Acquisition Mode (app.py, worker.py, diagnostic_dialog.py) talks to a
+# *module* rather than to ``SpectrometerBase`` directly, and reads a richer
+# capabilities record: brand, serial number, explicit trigger-mode numbers, and
+# trigger-delay limits. ``ModuleCapabilities`` is that record.
+#
+# The public edition ships no vendor drivers, so ``connect()`` on a real-device
+# module raises ``NoDeviceError`` with the reason, while ``connect_simulated()``
+# is fully functional and drives ``SimulatedSpectrometer``. The diagnostics
+# dialog still works end to end against the simulated device.
+
+
+VENDOR_DRIVER_UNAVAILABLE_HINT = (
+    "Vendor spectrometer drivers are not included in the public edition. "
+    "Choose Simulation Mode to run the full acquisition pipeline without hardware."
+)
+
+
+@dataclass
+class ModuleCapabilities:
+    """Capability record consumed by Acquisition Mode.
+
+    Field names are a contract with ``acquisition/app.py``,
+    ``acquisition/worker.py`` and ``acquisition/graph.py``.
+    """
+
+    brand: str = "simulated"
+    model: str = "Simulated"
+    serial_number: str = "SIM00001"
+    pixel_count: int = 2048
+    wavelength_min: float = 200.0
+    wavelength_max: float = 1000.0
+    max_intensity: float = 65535.0
+    integration_time_min_us: int = 1_000
+    integration_time_max_us: int = 60_000_000
+    normal_trigger_mode: int | None = 0
+    external_trigger_mode: int | None = 1
+    trigger_modes: dict[str, int] = field(default_factory=lambda: {"normal": 0, "external": 1})
+    supports_dark_correction: bool = True
+    supports_nonlinearity_correction: bool = True
+    supports_trigger_delay: bool = True
+    trigger_delay_min_us: float = 0.0
+    trigger_delay_max_us: float = 1_000_000.0
+
+    @property
+    def has_external_trigger(self) -> bool:
+        return self.external_trigger_mode is not None
+
+
+class SimulatedBackedModule:
+    """Acquisition module backed by :class:`SimulatedSpectrometer`.
+
+    Concrete subclasses name the brand and describe how the real device would be
+    opened. ``connect()`` is deliberately left to subclasses so that a module
+    representing absent hardware cannot accidentally inherit a working connect.
+    """
+
+    brand = "simulated"
+    default_profile = "Generic"
+    #: Reason ``connect()`` cannot reach real hardware in this edition.
+    unavailable_reason: str = VENDOR_DRIVER_UNAVAILABLE_HINT
+
+    def __init__(self) -> None:
+        self._backend: SimulatedSpectrometer | None = None
+        self._simulated = False
+
+    # ── Connection ───────────────────────────────────────────────────────
+
+    def connect(self, device_index: int = 0) -> str:
+        """Open the real device. Not possible in the public edition."""
+        raise NoDeviceError(self.unavailable_reason)
+
+    def connect_simulated(self, profile_name: str | None = None) -> str:
+        """Attach the simulated backend; fully functional."""
+        profile_key = profile_name or self.default_profile
+        profile = SIMULATION_PROFILES.get(profile_key, SIMULATION_PROFILES["Generic"])
+        self._backend = SimulatedSpectrometer(profile=profile)
+        self._simulated = True
+        return f"Connected to {self._backend.model} (Simulated)"
+
+    def disconnect(self) -> None:
+        if self._backend is not None:
+            self._backend.disconnect()
+        self._backend = None
+        self._simulated = False
+
+    @property
+    def is_connected(self) -> bool:
+        return self._backend is not None and self._backend.is_connected
+
+    def _require_backend(self) -> SimulatedSpectrometer:
+        if self._backend is None:
+            raise SpectrometerError(f"{type(self).__name__} is not connected.")
+        return self._backend
+
+    # ── Identity and capabilities ────────────────────────────────────────
+
+    @property
+    def model(self) -> str:
+        return self._backend.model if self._backend is not None else f"{self.brand} (disconnected)"
+
+    @property
+    def serial_number(self) -> str:
+        return self._backend.serial_number if self._backend is not None else "N/A"
+
+    @property
+    def capabilities(self) -> ModuleCapabilities:
+        if self._backend is None:
+            return ModuleCapabilities(brand=self.brand, model=self.model, serial_number="N/A")
+        base = self._backend.capabilities
+        trigger_modes = dict(base.trigger_modes)
+        return ModuleCapabilities(
+            brand="simulated" if self._simulated else self.brand,
+            model=base.model,
+            serial_number=self._backend.serial_number,
+            pixel_count=base.pixels,
+            wavelength_min=base.wl_min_nm,
+            wavelength_max=base.wl_max_nm,
+            max_intensity=base.max_intensity,
+            integration_time_min_us=base.int_min_us,
+            integration_time_max_us=base.int_max_us,
+            normal_trigger_mode=trigger_modes.get("normal", 0),
+            external_trigger_mode=trigger_modes.get("external"),
+            trigger_modes=trigger_modes,
+            supports_dark_correction=base.supports_dark_correction,
+            supports_nonlinearity_correction=base.supports_nonlinearity_correction,
+            supports_trigger_delay=base.supports_trigger_delay,
+            trigger_delay_max_us=base.trigger_delay_max_us,
+        )
+
+    # ── Acquisition ──────────────────────────────────────────────────────
+
+    @property
+    def integration_time_us(self) -> int:
+        return self._require_backend().integration_time_us
+
+    def set_integration_time(self, microseconds: int) -> None:
+        self._require_backend().set_integration_time(microseconds)
+
+    @property
+    def current_trigger_mode(self) -> int:
+        return self._require_backend().current_trigger_mode
+
+    def set_trigger_mode(self, mode: int) -> None:
+        self._require_backend().set_trigger_mode(mode)
+
+    @property
+    def trigger_delay_us(self) -> float:
+        return self._require_backend().trigger_delay_us
+
+    def set_trigger_delay(self, microseconds: float) -> None:
+        self._require_backend().set_trigger_delay(microseconds)
+
+    def get_wavelengths(self) -> np.ndarray:
+        return self._require_backend().get_wavelengths()
+
+    def get_intensities(self, correct_dark_counts: bool = False, correct_nonlinearity: bool = False) -> np.ndarray:
+        return self._require_backend().get_intensities(
+            correct_dark_counts=correct_dark_counts,
+            correct_nonlinearity=correct_nonlinearity,
+        )
+
+    def get_spectrum(self) -> tuple[np.ndarray, np.ndarray]:
+        return self.get_wavelengths(), self.get_intensities()
+
+    def drain_buffered_frames(self, max_frames: int = 8, time_budget_s: float = 2.5) -> int:
+        """Discard stale frames. The simulated backend never buffers any."""
+        del max_frames, time_budget_s
+        return 0
+
+
+class SpectrometerModule(SimulatedBackedModule):
+    """Ocean Optics module. Real devices need python-seabreeze (not bundled).
+
+    The private edition opens Ocean Optics hardware through python-seabreeze with
+    its own USB backend diagnostics. The public edition keeps the same interface
+    and the same simulated pipeline, and reports honestly that no vendor backend
+    is present when a real connection is attempted.
+    """
+
+    brand = "ocean_optics"
+    unavailable_reason = (
+        "No Ocean Optics backend is available: the public edition does not bundle "
+        "python-seabreeze or its USB drivers. " + VENDOR_DRIVER_UNAVAILABLE_HINT
+    )
+
+    @classmethod
+    def diagnose(cls) -> dict:
+        """Return the Ocean Optics diagnostics report.
+
+        The shape matches what ``diagnostic_dialog._populate_ocean_tab`` reads;
+        every list is empty because no bus scan is possible without a backend.
+        """
+        import platform as _platform
+
+        return {
+            "backend": "SpectrometerModule",
+            "edition": "public",
+            "platform": _platform.system(),
+            "seabreeze_installed": False,
+            "seabreeze_backend": None,
+            "seabreeze_backend_fail_reason": cls.unavailable_reason,
+            "pyusb_installed": False,
+            "libusb_found": False,
+            "libusb_name": None,
+            "usb_devices": [],
+            "seabreeze_devices": [],
+            "driver_warnings": [],
+            "per_device_errors": {},
+            "notes": [
+                cls.unavailable_reason,
+                "Use Simulate to run the full acquisition pipeline against the simulated device.",
+            ],
+        }
+
+
+class ThorlabsCCSModule(SimulatedBackedModule):
+    """Thorlabs CCS module. Real devices need TLCCS/NI-VISA (not bundled).
+
+    The private edition drives CCS100/125/150/175/200 spectrometers through
+    ``TLCCS_64.dll`` over NI-VISA. The public edition keeps the interface and the
+    simulated pipeline (including the ``CCS175`` profile the diagnostics dialog
+    requests) and reports honestly when a real connection is attempted.
+    """
+
+    brand = "thorlabs"
+    default_profile = "CCS175"
+    unavailable_reason = (
+        "No Thorlabs CCS backend is available: the public edition does not bundle "
+        "TLCCS_64.dll or the NI-VISA runtime. " + VENDOR_DRIVER_UNAVAILABLE_HINT
+    )
+
+    def connect_with_resource(self, resource: str) -> str:
+        """Open a specific VISA resource. Not possible in the public edition."""
+        raise NoDeviceError(f"Cannot open VISA resource {resource!r}. {self.unavailable_reason}")
+
+    @classmethod
+    def diagnose(cls) -> dict:
+        """Return the Thorlabs diagnostics report (see ``_populate_thorlabs_tab``)."""
+        import platform as _platform
+
+        return {
+            "backend": "ThorlabsCCSModule",
+            "edition": "public",
+            "supported": _platform.system() == "Windows",
+            "platform": _platform.system(),
+            "dll_found": False,
+            "dll_path": None,
+            "visa_installed": False,
+            "usb_devices": [],
+            "visa_resources": [],
+            "notes": [
+                cls.unavailable_reason,
+                "Use Simulate to run the full acquisition pipeline against the simulated device.",
+            ],
+        }
