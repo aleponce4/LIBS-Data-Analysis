@@ -10,16 +10,19 @@ ProLIBSpector is a scientific software platform for Laser-Induced Breakdown Spec
 
 > **Product Scope & Relationship**  
 > The complete private product (`ProLIBSpector`) supports Ocean Optics, Thorlabs CCS, and YiXist spectrometers, GRBL-controlled stages, and pulsed-laser triggering. This public edition provides the generic interfaces, simulated hardware engines, spectral analysis algorithms, interactive visualization, and selected nonconfidential acquisition workflows. Commercial classification models and physical driver binaries are maintained separately.
+>
+> **Not in this edition**, and reported as such in the UI rather than failing silently: vendor spectrometer drivers (Ocean Optics via seabreeze, Thorlabs CCS via TLCCS/NI-VISA, YiXist via its vendor SDK), the GRBL laser-stage driver, automated laser-stage runs, automated 2D mapping *acquisition*, and the trained spectra-readiness calibration. Analysing existing 2D mapping runs is fully supported here; only acquiring them requires the private edition. Modules standing in for these features carry a `PUBLIC-EDITION STUB` header stating what the private version does.
 
 ---
 
 ## Supported Public Features
 
 - **Hardware Simulation Engine**: `SimulatedSpectrometer` engine mimicking physical nanosecond plasma emission decay, dark counts, exposure integration timing, shot noise, and trigger delay responses.
-- **Automated Multi-Plate Acquisition Interface**: Automated workflow interface supporting 2x2 multi-plate holders (P1–P4, Corning 96-well format), live spectrum canvas, and well status maps.
+- **High-Throughput Plate Workflow**: Plate autosave for 6/12/24/48/96/384-well formats with configurable shots-per-well and row- or column-major ordering, a live well-status plate map, per-shot discard, specific-well repair passes, atomic run-state persistence, and resume of an interrupted plate (from saved state or by scanning the folder).
+- **Spectra Readiness QC**: Deterministic per-shot gating on detector saturation, signal-to-noise, and flat-trace detection, with a per-shot CSV and one-click requeueing of non-passing wells.
 - **Spectral Preprocessing Engine**: Savitzky-Golay filtering, Asymmetric Least Squares (ALS) baseline correction, Area normalization, Maximum normalization, and Standard Normal Variate (SNV) transformation.
 - **NIST Line Database Search**: Internal reference database derived from NIST Atomic Spectra Database (ASD) data covering neutral and ionic species ($I, II, III$).
-- **Interactive Visualization**: High-DPI PyQtGraph interactive spectrum canvas, region-of-interest (ROI) selection, peak annotation, and dark spectrum subtraction.
+- **Interactive Visualization**: High-DPI Tkinter/Matplotlib interactive spectrum canvas, region-of-interest (ROI) selection, peak annotation, and dark spectrum subtraction.
 - **Reliable Asynchronous Persistence**: Bounded background save queue with ordered single-writer persistence, backpressure, failure propagation, and drain-before-finalization behavior.
 - **Spatially Resolved 2D Mapping**: Grid spectrum visualization, multi-element evidence fusion, and peak intensity heatmap rendering.
 
@@ -61,7 +64,7 @@ ProLIBSpector is a scientific software platform for Laser-Induced Breakdown Spec
 
 ```mermaid
 flowchart TD
-    UI[GUI Layer / PyQt5 & PyQtGraph] --> Launcher[Mode Launcher]
+    UI[GUI Layer / Tkinter, ttk & Matplotlib] --> Launcher[Mode Launcher]
     Launcher --> Analysis[Analysis App]
     Launcher --> Acquisition[Acquisition App]
     
@@ -92,6 +95,17 @@ cd libs-spectroscopy-workbench
 pip install -e .
 ```
 
+Two optional features have optional dependencies: wavelet denoising needs
+`PyWavelets`, and Parquet map exports need `pyarrow`. Install both with:
+
+```bash
+pip install -e ".[full]"
+```
+
+An editable install is used above because the bundled data directories
+(`Icons/`, `Help/`, `element_database.csv`, `persistent_lines.csv`,
+`calibration_data_library.csv`) live at the repository root, alongside `src/`.
+
 ### Running the Application
 
 Launch the desktop interface using the simulated backend:
@@ -106,7 +120,9 @@ Select **Simulated Acquisition** to test live spectral collection without physic
 
 ## Testing & Validation Scope
 
-Automated unit and integration tests verify device initialization, wavelength generation, baseline correction algorithms, background save writer reliability, and 2D spatial mapping output contracts.
+Automated unit and integration tests verify device initialization, wavelength generation, baseline correction algorithms, background save writer reliability, plate autosave and resume behavior, spectra readiness gating, and 2D spatial mapping output contracts.
+
+`tests/test_imports.py` imports every module under `src/prolibspector` and fails on any `ImportError`. CI runs it as its own step before the rest of the suite, so a missing module or dependency can never again pass CI while the application is unable to start.
 
 To execute the test suite locally:
 

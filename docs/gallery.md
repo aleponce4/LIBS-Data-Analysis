@@ -54,7 +54,7 @@ The complete private product (`ProLIBSpector`) supports the following commercial
   - **CSV Spectral Files**: Standard 2-column $(\lambda, \text{Intensity})$ and multi-point CSV exports.
   - **High-Density Binary Stores**: Chunked binary arrays (`.npy`) for rapid disk write/read during high-speed raster scanning.
   - **Reproducibility Manifests**: Automated JSON metadata logs containing spectrometer settings, laser energy profiles, timestamped spatial coordinates, and SHA256 data checksums.
-  - **Graphics & Figures**: Export to high-resolution PNG, PDF, and SVG formats via Matplotlib and PyQtGraph canvases.
+  - **Graphics & Figures**: Export to high-resolution PNG, PDF, TIFF, and SVG formats via the embedded Matplotlib canvas.
 
 ---
 
