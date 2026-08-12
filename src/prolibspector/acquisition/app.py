@@ -208,11 +208,9 @@ class AcquisitionViewBase:
                 return
         elif brand == "yixist":
             if not yixist_supported():
-                messagebox.showinfo(
-                    "YiXist Unavailable",
-                    "YiXist/YXSP support is currently Windows x64 only.",
-                    parent=self.root,
-                )
+                from prolibspector.hardware.yixist_spectrometer import YIXIST_UNAVAILABLE_REASON
+
+                messagebox.showinfo("YiXist Unavailable", YIXIST_UNAVAILABLE_REASON, parent=self.root)
                 return
         self.spectrometer = self.controller.create_spectrometer(brand)
 
@@ -279,11 +277,9 @@ class AcquisitionViewBase:
             )
             return
         if brand == "yixist" and not yixist_supported():
-            messagebox.showinfo(
-                "YiXist Unavailable",
-                "YiXist/YXSP support is currently Windows x64 only.",
-                parent=self.root,
-            )
+            from prolibspector.hardware.yixist_spectrometer import YIXIST_UNAVAILABLE_REASON
+
+            messagebox.showinfo("YiXist Unavailable", YIXIST_UNAVAILABLE_REASON, parent=self.root)
             return
 
         if action == "simulate":
@@ -2866,7 +2862,7 @@ class AcquisitionViewBase:
             state=thorlabs_state,
             command=lambda: _pick("thorlabs"),
         ).pack(side=tk.LEFT, padx=8)
-        yixist_text = "YiXist / YXSP" if yixist_supported() else "YiXist / YXSP (Windows x64 only)"
+        yixist_text = "YiXist / YXSP" if yixist_supported() else "YiXist / YXSP (private edition)"
         yixist_state = "normal" if yixist_supported() else "disabled"
         ttk.Button(
             btn_frame,

@@ -521,9 +521,12 @@ class DiagnosticDialog:
 
         supported = rpt.get("supported", yixist_supported())
         if not supported:
+            from prolibspector.hardware.yixist_spectrometer import YIXIST_UNAVAILABLE_REASON
+
             ttk.Label(
                 tab,
-                text="YiXist/YXSP support is Windows x64 only in this build.",
+                text=YIXIST_UNAVAILABLE_REASON,
+                wraplength=_wrap(tab, 720),
                 foreground=_muted_color(),
                 font=_font(self.dlg, 10, "bold"),
             ).grid(row=row, column=0, columnspan=3, sticky="w", pady=2)
