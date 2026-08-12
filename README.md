@@ -30,7 +30,7 @@ The LIBS Spectroscopy Workbench is a scientific software platform for Laser-Indu
 
 ---
 
-## Technical Overview & Visual Evidence
+## Technical Overview & Screenshots
 
 ### 1. Main Application Interface (Analysis Mode)
 
@@ -44,7 +44,7 @@ The LIBS Spectroscopy Workbench is a scientific software platform for Laser-Indu
 
 ![Peak Identification & NIST Overlay](docs/img/peak_identification_nist.png)
 
-*Automated peak detection and NIST elemental line matching for Ti I and Ti II emission lines (e.g. 335 nm, 454 nm, 501 nm) with configurable intensity threshold sliders and round-off error tolerances.*
+*Automated peak detection and NIST elemental line matching for Ti I and Ti II emission lines (e.g. 335 nm, 454 nm, 501 nm), with sliders for label font size, intensity threshold, prominence filtering, and database matching tolerance.*
 
 ---
 
