@@ -30,10 +30,14 @@ dependencies = [
     "scipy>=1.8.0",
     "pandas>=1.4.0",
     "matplotlib>=3.5.0",
-    "PyQt5>=5.15.0",
-    "pyqtgraph>=0.12.0",
     "sv-ttk>=2.5.0",
     "pillow>=9.0.0",
+    # Hard runtime imports (not optional): the modules below fail to import
+    # without these. See label_peaks.py, search_element.py, calibration_curve.py.
+    "markdown>=3.4.0",
+    "tkhtmlview>=0.1.1",
+    "textalloc>=0.0.4",
+    "statsmodels>=0.13.0",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +45,12 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "ruff>=0.1.0",
+]
+# Guarded imports: the app degrades gracefully without these, but the
+# wavelet-denoising and Parquet-export features need them.
+full = [
+    "PyWavelets>=1.3.0",
+    "pyarrow>=8.0.0",
 ]
 
 [tool.setuptools.packages.find]

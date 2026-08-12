@@ -28,23 +28,28 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 xvfb
+          sudo apt-get install -y xvfb
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e .[dev]
 
+      # Import every module under src/prolibspector. This is deliberately a
+      # separate, early step: a green test suite that never imports the app is
+      # how this project once shipped completely broken.
+      - name: Import check (Linux headless)
+        if: runner.os == 'Linux'
+        run: xvfb-run python -m pytest tests/test_imports.py -v
+
+      - name: Import check (Windows)
+        if: runner.os == 'Windows'
+        run: python -m pytest tests/test_imports.py -v
+
       - name: Run pytest (Linux headless)
         if: runner.os == 'Linux'
-        run: |
-          xvfb-run pytest
-        env:
-          QT_QPA_PLATFORM: offscreen
+        run: xvfb-run pytest
 
       - name: Run pytest (Windows)
         if: runner.os == 'Windows'
-        run: |
-          pytest
-        env:
-          QT_QPA_PLATFORM: offscreen
+        run: pytest
