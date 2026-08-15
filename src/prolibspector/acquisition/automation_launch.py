@@ -1,105 +1,121 @@
-﻿"""PUBLIC-EDITION STUB.
-
-This feature is not included in the public edition. The interface below imports
-cleanly and reports the feature as unavailable rather than failing silently.
-"""
+"""GUI-independent automated acquisition launch decisions."""
 
 from __future__ import annotations
 
-import logging
-from dataclasses import dataclass, replace
-from typing import Any
+from dataclasses import dataclass
 
-from prolibspector.acquisition.automation import AUTOMATION_UNAVAILABLE_REASON
+from prolibspector.acquisition.automation_ui_state import AutomationUiState
 
-logger = logging.getLogger(__name__)
 
 RUN_MODE_REAL = "real"
-RUN_MODE_DRY_RUN = "dry_run"
 RUN_MODE_SIMULATION = "simulation"
 
 
 @dataclass(frozen=True)
-class AutomationLaunchPlan:
-    """Decision record for one launch attempt.
+class AutomationDryRunLaunchPlan:
+    can_start: bool
+    block_reason: str
+    laser_pattern_test: bool
 
-    Field names are the contract with ``AutomatedAcquisitionController``; a
-    blocked plan simply has every capability flag false.
-    """
 
-    ready: bool = False
-    can_start: bool = False
-    block_reason: str = AUTOMATION_UNAVAILABLE_REASON
-    run_mode: str = RUN_MODE_DRY_RUN
-    run_config: Any = None
-    simulation_run: bool = False
-    laser_pattern_test: bool = False
+@dataclass(frozen=True)
+class AutomationStartLaunchPlan:
+    ready: bool
+    block_reason: str
+    laser_pattern_test: bool
+    simulation_run: bool
+    run_mode: str
+    run_config: object | None
     needs_simulation_directory: bool = False
-    simulation_directory_to_remember: str | None = None
+    simulation_directory_to_remember: str = ""
     spectra_qc_enabled: bool = False
 
 
-def plan_automation_dry_run_launch(state: Any = None) -> AutomationLaunchPlan:
-    """Return the dry-run launch decision; always blocked in this edition."""
-    del state
-    logger.info("Automated dry run requested, but it is a private-edition feature.")
-    return AutomationLaunchPlan(run_mode=RUN_MODE_DRY_RUN)
+def automation_config_with_run_directory(
+    config,
+    run_directory: str,
+) -> object:
+    mapping = config.to_mapping()
+    mapping["run_directory"] = run_directory
+    return type(config).from_mapping(mapping)
+
+
+def plan_automation_dry_run_launch(state: AutomationUiState) -> AutomationDryRunLaunchPlan:
+    return AutomationDryRunLaunchPlan(
+        can_start=bool(state.can_dry_run),
+        block_reason="" if state.can_dry_run else state.dry_run_reason,
+        laser_pattern_test=bool(state.laser_pattern_test),
+    )
 
 
 def plan_automation_start_launch(
-    config: Any = None,
-    state: Any = None,
+    config,
+    state: AutomationUiState,
     *,
-    devices_simulated: bool = False,
+    devices_simulated: bool,
     resume_available: bool = False,
-    worker_config: Any = None,
+    worker_config=None,
     existing_simulation_run_directory: str | None = None,
     new_simulation_run_directory: str | None = None,
     spectra_qc_selected: bool = False,
     spectra_qc_available: bool = False,
-) -> AutomationLaunchPlan:
-    """Return the firing-run launch decision; always blocked in this edition."""
-    del (
-        config,
-        state,
-        devices_simulated,
-        resume_available,
-        worker_config,
-        existing_simulation_run_directory,
-        new_simulation_run_directory,
-        spectra_qc_selected,
-        spectra_qc_available,
-    )
-    logger.info("Automated firing run requested, but it is a private-edition feature.")
-    return AutomationLaunchPlan(run_mode=RUN_MODE_REAL)
+) -> AutomationStartLaunchPlan:
+    laser_pattern_test = bool(state.laser_pattern_test)
+    simulation_run = bool(devices_simulated and not laser_pattern_test)
+    run_mode = RUN_MODE_SIMULATION if simulation_run else RUN_MODE_REAL
+    qc_enabled = bool(not laser_pattern_test and spectra_qc_selected and spectra_qc_available)
 
-
-def automation_config_with_run_directory(config: Any, run_directory: str | None) -> Any:
-    """Return ``config`` bound to ``run_directory``.
-
-    This is pure data plumbing, so it does the real thing when it can: it uses a
-    ``with_run_directory`` method or dataclass ``replace`` when the config
-    supports it, and otherwise returns the config unchanged.
-    """
     if config is None:
-        return None
-    binder = getattr(config, "with_run_directory", None)
-    if callable(binder):
-        return binder(run_directory)
-    try:
-        return replace(config, run_directory=run_directory)
-    except TypeError:
-        logger.debug("Config %r cannot carry a run directory; returning it unchanged.", type(config).__name__)
-        return config
+        return AutomationStartLaunchPlan(
+            ready=False,
+            block_reason="Configure an automated run plan first.",
+            laser_pattern_test=laser_pattern_test,
+            simulation_run=simulation_run,
+            run_mode=run_mode,
+            run_config=None,
+            spectra_qc_enabled=False,
+        )
+    if not state.ready_to_run:
+        return AutomationStartLaunchPlan(
+            ready=False,
+            block_reason=state.ready_reason,
+            laser_pattern_test=laser_pattern_test,
+            simulation_run=simulation_run,
+            run_mode=run_mode,
+            run_config=None,
+            spectra_qc_enabled=False,
+        )
 
+    run_config = config
+    simulation_directory_to_remember = ""
+    if simulation_run:
+        if resume_available and worker_config is not None and worker_config.run_directory:
+            run_config = worker_config
+            simulation_directory_to_remember = worker_config.run_directory
+        elif resume_available and existing_simulation_run_directory:
+            run_config = automation_config_with_run_directory(config, existing_simulation_run_directory)
+        elif not new_simulation_run_directory:
+            return AutomationStartLaunchPlan(
+                ready=True,
+                block_reason="",
+                laser_pattern_test=laser_pattern_test,
+                simulation_run=True,
+                run_mode=run_mode,
+                run_config=None,
+                needs_simulation_directory=True,
+                spectra_qc_enabled=qc_enabled,
+            )
+        else:
+            run_config = automation_config_with_run_directory(config, new_simulation_run_directory)
+            simulation_directory_to_remember = new_simulation_run_directory
 
-__all__ = [
-    "RUN_MODE_DRY_RUN",
-    "RUN_MODE_REAL",
-    "RUN_MODE_SIMULATION",
-    "AutomationLaunchPlan",
-    "automation_config_with_run_directory",
-    "plan_automation_dry_run_launch",
-    "plan_automation_start_launch",
-]
-
+    return AutomationStartLaunchPlan(
+        ready=True,
+        block_reason="",
+        laser_pattern_test=laser_pattern_test,
+        simulation_run=simulation_run,
+        run_mode=run_mode,
+        run_config=run_config,
+        simulation_directory_to_remember=simulation_directory_to_remember,
+        spectra_qc_enabled=qc_enabled,
+    )

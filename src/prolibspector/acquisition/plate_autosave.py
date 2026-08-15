@@ -21,6 +21,7 @@ plus an append-only ``reproducibility_events.jsonl`` event log and a
 
 from __future__ import annotations
 
+import csv
 import json
 import logging
 import os
@@ -64,9 +65,13 @@ REPRODUCIBILITY_EVENTS_FILE_NAME = "reproducibility_events.jsonl"
 DISCARDED_DIR_NAME = "Discarded"
 
 _WELL_RE = re.compile(r"^([A-Z])([0-9]{1,2})$")
+#: The trailing ``(?:_[0-9]+)?`` matches the collision suffix ``unique_output_path``
+#: adds when two shots would land on the same name. Without it this module
+#: generates filenames its own resume scanner rejects, and a resumed run
+#: silently re-shoots wells whose spectra are already on disk.
 _SHOT_FILE_RE = re.compile(
     r"^(?P<plate>.+)_(?P<well>[A-Z][0-9]{1,2})_shot(?P<shot>[0-9]{2,})_"
-    r"(?P<timestamp>[0-9]{8}_[0-9]{6}_[0-9]+)_(?P<index>[0-9]+)\.csv$"
+    r"(?P<timestamp>[0-9]{8}_[0-9]{6}_[0-9]+)_(?P<index>[0-9]+)(?:_[0-9]+)?\.csv$"
 )
 
 
@@ -86,6 +91,13 @@ def well_names(rows: int, columns: int, order_mode: str = ORDER_ROW) -> list[str
     if order_mode == ORDER_COLUMN:
         return [f"{row_letter(row)}{column}" for column in range(1, columns + 1) for row in range(rows)]
     return [f"{row_letter(row)}{column}" for row in range(rows) for column in range(1, columns + 1)]
+
+
+#: Spelling the automation stack uses for :func:`well_names`. Both names are
+#: load-bearing — the manual plate workflow grew up calling it ``well_names``
+#: and the automated one ``ordered_wells`` — and they must stay the same
+#: function, because a plate resumed by one path is read by the other.
+ordered_wells = well_names
 
 
 def sanitize_filename_part(value: Any, fallback: str = "Sample") -> str:
@@ -126,6 +138,12 @@ def _coerce_optional_float(value: Any) -> float | None:
         return float(text)
     except ValueError:
         return None
+
+
+def _coerce_optional_int(value: Any) -> int | None:
+    """Like :func:`_coerce_int` but distinguishes "absent" from "zero"."""
+    parsed = _coerce_optional_float(value)
+    return None if parsed is None else int(parsed)
 
 
 def _utc_now() -> str:
@@ -299,6 +317,14 @@ class PlateShotRecord:
     filepath: str
     shot_index: int = 0
     saved_at: str = field(default_factory=_utc_now)
+    #: Exposure actually used for this shot. Recorded per shot rather than per
+    #: plate because an automated run may vary integration time by row band and
+    #: trigger delay by column, so the plate-level config does not describe any
+    #: individual spectrum. ``None`` means "not recorded" - which is what a
+    #: record rebuilt by scanning filenames can honestly say.
+    integration_time_ms: float | None = None
+    integration_time_us: int | None = None
+    trigger_delay_us: float | None = None
 
     @classmethod
     def from_mapping(cls, values: Any) -> "PlateShotRecord":
@@ -315,16 +341,26 @@ class PlateShotRecord:
             filepath=str(values.get("filepath") or ""),
             shot_index=_coerce_int(values.get("shot_index"), 0),
             saved_at=str(values.get("saved_at") or _utc_now()),
+            integration_time_ms=_coerce_optional_float(values.get("integration_time_ms")),
+            integration_time_us=_coerce_optional_int(values.get("integration_time_us")),
+            trigger_delay_us=_coerce_optional_float(values.get("trigger_delay_us")),
         )
 
     def to_mapping(self) -> dict[str, Any]:
-        return {
+        payload = {
             "well": self.well,
             "shot_number": self.shot_number,
             "filepath": self.filepath,
             "shot_index": self.shot_index,
             "saved_at": self.saved_at,
         }
+        # Omitted when absent, so a manual plate run keeps writing exactly the
+        # state file shape it wrote before, and older files still load.
+        for key in ("integration_time_ms", "integration_time_us", "trigger_delay_us"):
+            value = getattr(self, key)
+            if value is not None:
+                payload[key] = value
+        return payload
 
 
 # ─── Run state ────────────────────────────────────────────────────────────
@@ -487,11 +523,23 @@ class PlateRunState:
                 return well, counts.get(well, 0) + 1
         return None
 
-    def record_saved(self, filepath: str, shot_index: int = 0) -> dict[str, Any]:
+    def record_saved(
+        self,
+        filepath: str,
+        shot_index: int = 0,
+        *,
+        integration_time_ms: float | None = None,
+        integration_time_us: int | None = None,
+        trigger_delay_us: float | None = None,
+    ) -> dict[str, Any]:
         """Record a saved spectrum against the next assignment.
 
         Returns the fresh progress payload. Raises RuntimeError when the plate
         has no remaining assignment, so a caller cannot silently lose a shot.
+
+        The exposure arguments are keyword-only and optional: a manual plate run
+        holds one exposure for the whole plate and passes none of them, while an
+        automated run varies exposure per target and records what it used.
         """
         assignment = self.next_assignment()
         if assignment is None:
@@ -504,6 +552,9 @@ class PlateRunState:
                 shot_number=shot_number,
                 filepath=str(filepath),
                 shot_index=int(shot_index),
+                integration_time_ms=integration_time_ms,
+                integration_time_us=integration_time_us,
+                trigger_delay_us=trigger_delay_us,
             )
         )
 
@@ -638,8 +689,15 @@ def save_plate_run_state(
     *,
     closed_early: bool = False,
     timing: dict | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> str:
-    """Write the plate run state atomically into ``plate_dir``."""
+    """Write the plate run state atomically into ``plate_dir``.
+
+    ``extra`` is merged into the persisted payload. An automated run uses it to
+    stamp the schedules that vary within one plate - per-column trigger delays
+    and per-row-band integration times - which the plate config cannot express
+    because it describes the plate, not the individual target.
+    """
     if closed_early:
         plate_state.closed_early = True
 
@@ -647,6 +705,8 @@ def save_plate_run_state(
     payload["closed_early"] = bool(plate_state.closed_early)
     payload["written_at"] = _utc_now()
     payload["progress"] = plate_state.progress_payload()
+    if extra:
+        payload.update(extra)
 
     state_path = Path(plate_dir) / STATE_FILE_NAME
     if timing is not None:
@@ -717,7 +777,6 @@ def append_plate_reproducibility_event(
 ) -> str:
     """Append one O(1) event line to the plate's reproducibility event log."""
     plate_dir = _plate_dir_for(save_directory, plate_state)
-    plate_dir.mkdir(parents=True, exist_ok=True)
     entry = {
         "at": _utc_now(),
         "event": event,
@@ -730,9 +789,107 @@ def append_plate_reproducibility_event(
         entry["timing_sample"] = dict(timing_sample)
 
     events_path = plate_dir / REPRODUCIBILITY_EVENTS_FILE_NAME
-    with events_path.open("a", encoding="utf-8") as events_file:
-        events_file.write(json.dumps(entry, default=str) + "\n")
+    try:
+        plate_dir.mkdir(parents=True, exist_ok=True)
+        with events_path.open("a", encoding="utf-8") as events_file:
+            events_file.write(json.dumps(entry, default=str) + "\n")
+    except Exception:
+        # An automated run appends one of these per shot, so a transient I/O
+        # failure here - the log open in Excel on Windows, a full disk, a
+        # network share hiccup - would otherwise abort a multi-hour unattended
+        # run. The event log is diagnostic; the spectra are the product.
+        logger.warning("Could not append plate reproducibility event: %s", events_path, exc_info=True)
     return str(events_path)
+
+
+# ─── Per-shot timing log ──────────────────────────────────────────────────
+#
+# The worker stamps ``perf_counter()`` marks around each stage of a shot and
+# hands the raw dict here. Storing durations rather than the stamps themselves
+# is what makes the file readable across runs: the stamps share no epoch
+# between processes, so only the differences mean anything. An unpaired stage
+# writes an empty cell instead of a zero, because a stage that never ran and a
+# stage that took no measurable time are different facts.
+
+PLATE_TIMING_FILENAME = "_plate_timing_samples.csv"
+PLATE_TIMING_COLUMNS = [
+    "recorded_at",
+    "shot_index",
+    "plate_index",
+    "well",
+    "shot_number",
+    "mode",
+    "motion_command_ms",
+    "idle_wait_ms",
+    "settle_ms",
+    "interlock_ms",
+    "trigger_read_ms",
+    "wavelengths_fetch_ms",
+    "save_ms",
+    "state_write_ms",
+    "cycle_ms",
+    "loop_gap_ms",
+]
+
+#: Output column ← the pair of stamps whose difference fills it.
+_PLATE_TIMING_STAGES: tuple[tuple[str, str, str], ...] = (
+    ("motion_command_ms", "motion_start", "motion_command_end"),
+    ("idle_wait_ms", "idle_wait_start", "idle_wait_end"),
+    ("settle_ms", "settle_start", "settle_end"),
+    ("interlock_ms", "interlock_start", "interlock_end"),
+    ("trigger_read_ms", "trigger_wait_start", "trigger_wait_end"),
+    ("wavelengths_fetch_ms", "wavelengths_fetch_start", "wavelengths_fetch_end"),
+    ("save_ms", "save_start", "save_end"),
+    ("state_write_ms", "state_write_start", "state_write_end"),
+    ("cycle_ms", "cycle_start", "cycle_end"),
+    # Dead time between shots: the gap from the previous cycle closing to this
+    # one opening. It is the number that exposes a slow UI thread.
+    ("loop_gap_ms", "previous_cycle_end", "cycle_start"),
+)
+
+
+def plate_timing_samples_path(save_directory: str | os.PathLike[str]) -> str:
+    return str(Path(save_directory) / PLATE_TIMING_FILENAME)
+
+
+def _timing_duration_ms(timing: dict[str, Any], start_key: str, end_key: str) -> Any:
+    start = timing.get(start_key)
+    end = timing.get(end_key)
+    if start is None or end is None:
+        return ""
+    try:
+        return (float(end) - float(start)) * 1000.0
+    except (TypeError, ValueError):
+        return ""
+
+
+def plate_timing_row(timing: dict[str, Any]) -> dict[str, Any]:
+    """Convert one shot's perf-counter stamps into a row of stage durations."""
+    row: dict[str, Any] = {column: "" for column in PLATE_TIMING_COLUMNS}
+    row["recorded_at"] = datetime.now().isoformat(timespec="milliseconds")
+    for key in ("shot_index", "plate_index", "well", "shot_number", "mode"):
+        value = timing.get(key)
+        if value is not None:
+            row[key] = value
+    for column, start_key, end_key in _PLATE_TIMING_STAGES:
+        row[column] = _timing_duration_ms(timing, start_key, end_key)
+    return row
+
+
+def append_plate_timing_row(save_directory: str | os.PathLike[str], row: dict[str, Any]) -> str:
+    """Append one timing row, writing the header if the file is new or empty."""
+    filepath = Path(save_directory) / PLATE_TIMING_FILENAME
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not filepath.is_file() or filepath.stat().st_size == 0
+    with filepath.open("a", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=PLATE_TIMING_COLUMNS, extrasaction="ignore")
+        if write_header:
+            writer.writeheader()
+        writer.writerow(row)
+        # Flushed per row: a run that dies mid-plate must still leave every
+        # timing sample it managed to take.
+        handle.flush()
+    return str(filepath)
 
 
 # ─── Resume discovery ─────────────────────────────────────────────────────
@@ -758,6 +915,17 @@ def _records_from_plate_folder(plate_dir: Path) -> list[PlateShotRecord]:
         PlateShotRecord(well=well, shot_number=shot, filepath=str(path))
         for _timestamp, shot, well, path in found
     ]
+
+
+def records_from_plate_folder(plate_dir: str | os.PathLike[str]) -> list[PlateShotRecord]:
+    """Rebuild the saved-shot list for a plate by scanning the files on disk.
+
+    The state file is the fast path; this is the authority when it is missing or
+    unreadable, because the spectra themselves are the durable record. An
+    automated run that lost its state JSON can resume from this rather than
+    re-shooting wells it has already burned.
+    """
+    return _records_from_plate_folder(Path(plate_dir))
 
 
 def _infer_config_from_records(plate_name: str, records: Sequence[PlateShotRecord]) -> PlateAutosaveConfig:
@@ -857,12 +1025,19 @@ __all__ = [
     "ORDER_LABELS",
     "ORDER_ROW",
     "PLATE_FORMATS",
+    "PLATE_TIMING_COLUMNS",
+    "PLATE_TIMING_FILENAME",
     "PlateAutosaveConfig",
     "PlateRunState",
     "PlateShotRecord",
     "append_plate_reproducibility_event",
+    "append_plate_timing_row",
     "discover_resumable_plate_runs",
     "load_plate_run_state",
+    "ordered_wells",
+    "records_from_plate_folder",
+    "plate_timing_row",
+    "plate_timing_samples_path",
     "sanitize_filename_part",
     "save_plate_reproducibility_log",
     "save_plate_run_state",

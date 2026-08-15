@@ -981,14 +981,19 @@ class AcquisitionWorker(threading.Thread):
         dll_path = getattr(self.spec, "dll_path", None)
         if dll_path:
             metadata["sdk_dll_path"] = str(dll_path)
-            try:
-                from prolibspector.hardware.yixist_spectrometer import yixist_dll_identity
-
-                identity = yixist_dll_identity(dll_path)
-                metadata["sdk_dll_sha256"] = identity.get("sha256")
-                metadata["sdk_dll_product_version"] = identity.get("product_version")
-            except Exception:
-                logger.debug("Could not read SDK DLL identity for metadata.", exc_info=True)
+            # Backends that load a vendor DLL expose dll_identity() so a run
+            # manifest can record which binary actually produced the data.
+            # Vendors ship the same version number with different builds, so the
+            # hash is what settles an argument about whether two runs are
+            # comparable. Backends with no DLL simply do not offer the hook.
+            identity_provider = getattr(self.spec, "dll_identity", None)
+            if callable(identity_provider):
+                try:
+                    identity = identity_provider()
+                    metadata["sdk_dll_sha256"] = identity.get("sha256")
+                    metadata["sdk_dll_product_version"] = identity.get("product_version")
+                except Exception:
+                    logger.debug("Could not read SDK DLL identity for metadata.", exc_info=True)
         dll_version = getattr(self.spec, "dll_version", None)
         if dll_version:
             metadata["sdk_dll_version"] = str(dll_version)
