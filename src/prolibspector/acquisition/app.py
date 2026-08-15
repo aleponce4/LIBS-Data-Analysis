@@ -177,10 +177,8 @@ class AcquisitionViewBase:
             if hasattr(self, "status_message_var"):
                 self.status_message_var.set("Wait for the current disconnect to finish.")
             return
-        from prolibspector.hardware.spectrometer import (
-            SpectrometerModule,
-            SpectrometerError, NoDeviceError,
-        )
+        from prolibspector.hardware.ocean_optics import SpectrometerModule
+        from prolibspector.hardware.spectrometer import SpectrometerError, NoDeviceError
         from prolibspector.hardware.yixist_spectrometer import yixist_supported
 
         # ── Brand selection dialog ─────────────────────────────────────────
@@ -262,9 +260,8 @@ class AcquisitionViewBase:
     def _handle_diagnostic_result(self, result: dict):
         """Process the result from the diagnostic dialog.
         Connections are run in a background thread to keep the GUI responsive."""
-        from prolibspector.hardware.spectrometer import (
-            SpectrometerModule, ThorlabsCCSModule,
-        )
+        from prolibspector.hardware.ocean_optics import SpectrometerModule
+        from prolibspector.hardware.thorlabs_ccs import ThorlabsCCSModule
         from prolibspector.hardware.yixist_spectrometer import yixist_supported
 
         action = result.get("action")

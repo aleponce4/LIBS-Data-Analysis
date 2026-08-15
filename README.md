@@ -11,7 +11,9 @@ The LIBS Spectroscopy Workbench is a scientific software platform for Laser-Indu
 > **Product Scope & Relationship**  
 > This repository is the public edition of a larger private product (`ProLIBSpector`), which adds support for physical instrument hardware. This public edition provides the generic interfaces, simulated hardware engines, spectral analysis algorithms, interactive visualization, and selected nonconfidential acquisition workflows. Commercial classification models and physical driver binaries are maintained separately.
 >
-> **Not in this edition**, and reported as such in the UI rather than failing silently: vendor spectrometer drivers, the laser-stage driver, automated laser-stage runs, automated 2D mapping *acquisition*, unattended multi-plate acquisition across a plate holder, and the trained spectra-readiness calibration. Analysing existing 2D mapping runs is fully supported here; only acquiring them requires the private edition. Modules standing in for these features carry a `PUBLIC-EDITION STUB` header stating what the private version does.
+> **Not in this edition**, and reported as such in the UI rather than failing silently: the YiXist / YXSP spectrometer driver, automated laser-stage runs, automated 2D mapping *acquisition*, unattended multi-plate acquisition across a plate holder, and the trained spectra-readiness calibration. Analysing existing 2D mapping runs is fully supported here; only acquiring them requires the private edition. Modules standing in for these features carry a `PUBLIC-EDITION STUB` header stating what the private version does.
+>
+> The Ocean Optics and Thorlabs CCS spectrometer backends and the GRBL laser-stage driver **are** included and drive real hardware. What they need is the corresponding third-party runtime on the machine — python-seabreeze, or ThorSpectra's `TLCCS_64.dll` and NI-VISA — which is the operator's install, not something this repository can ship. With neither present, both backends and the stage still run against the bundled simulators.
 >
 > The Python package is still importable as `prolibspector`, so existing code and saved settings keep working.
 

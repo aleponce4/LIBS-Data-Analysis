@@ -78,6 +78,9 @@ minversion = "7.0"
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-ra -q"
+markers = [
+    "slow: starts a real subprocess or sleeps on a timeout; deselect with -m 'not slow'",
+]
 
 [tool.ruff]
 line-length = 120

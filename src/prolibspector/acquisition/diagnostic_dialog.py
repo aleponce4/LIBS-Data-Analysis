@@ -173,7 +173,8 @@ class DiagnosticDialog:
 
     def _run_diagnostics(self):
         """Runs in a background thread — imports can be slow."""
-        from prolibspector.hardware.spectrometer import SpectrometerModule, ThorlabsCCSModule
+        from prolibspector.hardware.ocean_optics import SpectrometerModule
+        from prolibspector.hardware.thorlabs_ccs import ThorlabsCCSModule
         from prolibspector.hardware.yixist_spectrometer import YixistSpectrometerModule
 
         try:

@@ -121,6 +121,11 @@ class SpectrometerBase(ABC):
         return False
 
 
+# Each profile mirrors one real instrument's geometry, timing limits and
+# trigger-mode numbers, so a simulated connection behaves like the device the
+# user actually picked. Only "Generic" models a gated detector with a
+# programmable trigger delay; the brand-named profiles report the delay support
+# their hardware really has, which for all of them is none.
 SIMULATION_PROFILES = {
     "Generic": {
         "model": "GENERIC-SIM",
@@ -130,9 +135,12 @@ SIMULATION_PROFILES = {
         "max_intensity": 65535,
         "int_min_us": 1_000,
         "int_max_us": 60_000_000,
-        "trigger_modes": {"normal": 0, "external": 1},
+        "trigger_modes": {"normal": 0, "external": 3},
         "trigger_delay_max_us": 1_000_000,
     },
+    # ── Ocean Optics ─────────────────────────────────────────────
+    # OOI-protocol devices number external *edge* trigger 3; OBP devices
+    # (HDX and the Ocean ST/SR line) number it 1.
     "USB4000": {
         "model": "USB4000-SIM",
         "pixels": 3648,
@@ -140,24 +148,58 @@ SIMULATION_PROFILES = {
         "wl_max": 1100.0,
         "max_intensity": 65535,
         "int_min_us": 10,
-        "int_max_us": 65_000_000,
-        "trigger_modes": {"normal": 0, "external": 1},
-        "trigger_delay_max_us": 1_000_000,
+        "int_max_us": 65_535_000,
+        "trigger_modes": {"normal": 0, "external": 3},
     },
-    # Thorlabs CCS175 geometry, so a simulated Thorlabs connection reports the
-    # instrument the user actually picked instead of the generic profile.
+    "QEPro": {
+        "model": "QEPRO-SIM",
+        "pixels": 1044,
+        "wl_min": 200.0,
+        "wl_max": 950.0,
+        "max_intensity": 262143,
+        "int_min_us": 8_000,
+        "int_max_us": 1_600_000_000,
+        "trigger_modes": {"normal": 0, "external": 3},
+    },
+    "HDX": {
+        "model": "HDX-SIM",
+        "pixels": 2068,
+        "wl_min": 200.0,
+        "wl_max": 800.0,
+        "max_intensity": 65535,
+        "int_min_us": 6_000,
+        "int_max_us": 10_000_000,
+        "trigger_modes": {"normal": 0, "external": 1},
+    },
+    # ── Thorlabs CCS ─────────────────────────────────────────────
+    # The CCS DLL returns normalised 0.0–1.0 intensities rather than ADC
+    # counts, and exposes no external hardware trigger at all.
     "CCS175": {
         "model": "CCS175-SIM",
         "pixels": 3648,
         "wl_min": 500.0,
         "wl_max": 1000.0,
-        "max_intensity": 65535,
+        "max_intensity": 1.0,
         "int_min_us": 10,
         "int_max_us": 60_000_000,
-        "trigger_modes": {"normal": 0, "external": 1},
-        "trigger_delay_max_us": 0,
+        "trigger_modes": {"normal": 0},
+    },
+    "CCS200": {
+        "model": "CCS200-SIM",
+        "pixels": 3648,
+        "wl_min": 200.0,
+        "wl_max": 1000.0,
+        "max_intensity": 1.0,
+        "int_min_us": 10,
+        "int_max_us": 60_000_000,
+        "trigger_modes": {"normal": 0},
     },
 }
+
+#: Full-scale ADC counts the synthetic spectrum is generated against. Profiles
+#: whose devices report a different range are rescaled from this at the end, so
+#: absolute quantities like dark counts stay in counts throughout.
+SIMULATION_ADC_FULL_SCALE = 65535.0
 
 SIMULATED_CONTINUUM_DECAY_US = 1.6
 SIMULATED_LINE_DECAY_US = 18.0
@@ -225,13 +267,19 @@ class SimulatedSpectrometer(SpectrometerBase):
         self._trigger_mode = 0
         self._trigger_delay_max_us = float(profile.get("trigger_delay_max_us", 0) or 0)
         self._trigger_delay_us = 0.0
+        # The gated-detector response only takes over once a delay has actually
+        # been set. Applying it unconditionally would put the zero-delay,
+        # continuum-swamped spectrum on screen during ordinary live view, which
+        # is physically right for a gate held open at t=0 but is not what an
+        # operator is looking at when no gate is configured at all.
+        self._trigger_delay_configured = False
         self._pixels = profile.get("pixels", 2048)
         self._max_intensity = profile.get("max_intensity", 65535)
         self._wl_min = profile.get("wl_min", 200.0)
         self._wl_max = profile.get("wl_max", 1000.0)
         self._int_min_us = profile.get("int_min_us", 1_000)
         self._int_max_us = profile.get("int_max_us", 60_000_000)
-        self._trigger_modes = profile.get("trigger_modes", {"normal": 0, "external": 1})
+        self._trigger_modes = profile.get("trigger_modes", {"normal": 0, "external": 3})
         self._wavelengths = np.linspace(self._wl_min, self._wl_max, self._pixels)
         self._rng = np.random.default_rng(seed)
 
@@ -261,7 +309,7 @@ class SimulatedSpectrometer(SpectrometerBase):
             trigger_modes=self._trigger_modes,
             supports_dark_correction=True,
             supports_nonlinearity_correction=True,
-            supports_trigger_delay=True,
+            supports_trigger_delay=self._trigger_delay_max_us > 0,
             trigger_delay_max_us=self._trigger_delay_max_us,
         )
 
@@ -286,7 +334,15 @@ class SimulatedSpectrometer(SpectrometerBase):
         return self._trigger_delay_us
 
     def set_trigger_delay(self, microseconds: float) -> None:
-        self._trigger_delay_us = max(0.0, float(microseconds))
+        # Refusing here is deliberate. A profile without an on-board delay must
+        # not accept one silently, or a delay sweep records delays that were
+        # never applied and the resulting curve is meaningless.
+        if self._trigger_delay_max_us <= 0:
+            raise SpectrometerError(
+                f"{self.model_name} does not support a programmable trigger delay."
+            )
+        self._trigger_delay_us = max(0.0, min(float(microseconds), self._trigger_delay_max_us))
+        self._trigger_delay_configured = True
 
     def connect(self, device_index: int = 0) -> str:
         self._is_connected = True
@@ -321,19 +377,34 @@ class SimulatedSpectrometer(SpectrometerBase):
             if self._wl_min <= center <= self._wl_max:
                 y += rel_amp * np.exp(-0.5 * ((self._wavelengths - center) / width) ** 2)
 
-        integration_scale = self._integration_time_us / SIMULATION_REFERENCE_INTEGRATION_TIME_US
-        y *= integration_scale
+        # Generate against a fixed ADC scale so the absolute terms — dark
+        # counts, shot noise, the readout floor — stay in counts. Devices that
+        # report a different range (the Thorlabs CCS normalises to 0.0–1.0) are
+        # rescaled once, at the end.
+        if self._trigger_delay_configured:
+            # Pulsed plasma: the emission is a transient, so what reaches the
+            # detector is set by where the exposure window sits, not by a
+            # linear integration-time scale meant for a continuous source.
+            y *= SIMULATION_ADC_FULL_SCALE * 0.7
+            y = apply_simulated_trigger_delay_response(
+                self._wavelengths,
+                y,
+                self._trigger_delay_us,
+                integration_us=self._integration_time_us,
+                max_intensity=SIMULATION_ADC_FULL_SCALE,
+                rng=self._rng,
+            )
+        else:
+            y *= self._integration_time_us / SIMULATION_REFERENCE_INTEGRATION_TIME_US
+            y *= SIMULATION_ADC_FULL_SCALE * 0.7
+            # Shot noise follows the accumulated signal; the readout floor does
+            # not. Same two terms the delayed branch applies, so a spectrum does
+            # not visibly change character the moment a delay is configured.
+            y += np.sqrt(np.maximum(y, 0.0)) * self._rng.standard_normal(y.size) * 0.5
+            y += self._rng.standard_normal(y.size) * (SIMULATION_ADC_FULL_SCALE * 0.00012)
 
-        y *= self._max_intensity * 0.7
-        y = apply_simulated_trigger_delay_response(
-            self._wavelengths,
-            y,
-            self._trigger_delay_us,
-            integration_us=self._integration_time_us,
-            max_intensity=self._max_intensity,
-            rng=self._rng,
-        )
-
+        if self._max_intensity != SIMULATION_ADC_FULL_SCALE:
+            y = y / SIMULATION_ADC_FULL_SCALE * float(self._max_intensity)
         return np.clip(y, 0.0, self._max_intensity)
 
 
@@ -353,14 +424,20 @@ class Spectrometer(SimulatedSpectrometer):
 # capabilities record: brand, serial number, explicit trigger-mode numbers, and
 # trigger-delay limits. ``ModuleCapabilities`` is that record.
 #
-# The public edition ships no vendor drivers, so ``connect()`` on a real-device
-# module raises ``NoDeviceError`` with the reason, while ``connect_simulated()``
-# is fully functional and drives ``SimulatedSpectrometer``. The diagnostics
-# dialog still works end to end against the simulated device.
+# ``SimulatedBackedModule`` below is the half of a module that never needs
+# hardware. The vendor backends live in their own modules and subclass it, so
+# each one only has to add its ``connect()`` path and its diagnostics:
+#
+#   ocean_optics.py   SpectrometerModule   — python-seabreeze over USB
+#   thorlabs_ccs.py   ThorlabsCCSModule    — TLCCS_64.dll over NI-VISA
+#
+# Both vendor SDKs are third-party runtimes installed on the operator's
+# machine, not something this repository can bundle. When one is missing,
+# ``connect()`` raises ``NoDeviceError`` naming what to install, and the
+# simulated path inherited from here keeps working unchanged.
 
 
-VENDOR_DRIVER_UNAVAILABLE_HINT = (
-    "Vendor spectrometer drivers are not included in the public edition. "
+VENDOR_RUNTIME_MISSING_HINT = (
     "Choose Simulation Mode to run the full acquisition pipeline without hardware."
 )
 
@@ -396,6 +473,22 @@ class ModuleCapabilities:
         return self.external_trigger_mode is not None
 
 
+def trigger_mode_fields(trigger_modes: dict[str, int] | None) -> dict:
+    """Expand a trigger map into the ``ModuleCapabilities`` fields that mirror it.
+
+    ``trigger_modes`` is the authority; ``normal_trigger_mode`` and
+    ``external_trigger_mode`` are conveniences the acquisition layer reads
+    directly. Building all three from one call keeps a backend from reporting a
+    trigger map and a mode number that disagree.
+    """
+    modes = dict(trigger_modes or {"normal": 0})
+    return {
+        "trigger_modes": modes,
+        "normal_trigger_mode": modes.get("normal", 0),
+        "external_trigger_mode": modes.get("external"),
+    }
+
+
 class SimulatedBackedModule:
     """Acquisition module backed by :class:`SimulatedSpectrometer`.
 
@@ -406,8 +499,9 @@ class SimulatedBackedModule:
 
     brand = "simulated"
     default_profile = "Generic"
-    #: Reason ``connect()`` cannot reach real hardware in this edition.
-    unavailable_reason: str = VENDOR_DRIVER_UNAVAILABLE_HINT
+    #: Reason ``connect()`` cannot reach hardware, when the subclass has no
+    #: hardware path of its own.
+    unavailable_reason: str = VENDOR_RUNTIME_MISSING_HINT
 
     def __init__(self) -> None:
         self._backend: SimulatedSpectrometer | None = None
@@ -457,7 +551,6 @@ class SimulatedBackedModule:
         if self._backend is None:
             return ModuleCapabilities(brand=self.brand, model=self.model, serial_number="N/A")
         base = self._backend.capabilities
-        trigger_modes = dict(base.trigger_modes)
         return ModuleCapabilities(
             brand="simulated" if self._simulated else self.brand,
             model=base.model,
@@ -468,13 +561,11 @@ class SimulatedBackedModule:
             max_intensity=base.max_intensity,
             integration_time_min_us=base.int_min_us,
             integration_time_max_us=base.int_max_us,
-            normal_trigger_mode=trigger_modes.get("normal", 0),
-            external_trigger_mode=trigger_modes.get("external"),
-            trigger_modes=trigger_modes,
             supports_dark_correction=base.supports_dark_correction,
             supports_nonlinearity_correction=base.supports_nonlinearity_correction,
             supports_trigger_delay=base.supports_trigger_delay,
             trigger_delay_max_us=base.trigger_delay_max_us,
+            **trigger_mode_fields(base.trigger_modes),
         )
 
     # ── Acquisition ──────────────────────────────────────────────────────
@@ -516,90 +607,3 @@ class SimulatedBackedModule:
         """Discard stale frames. The simulated backend never buffers any."""
         del max_frames, time_budget_s
         return 0
-
-
-class SpectrometerModule(SimulatedBackedModule):
-    """Ocean Optics module. Real devices need python-seabreeze (not bundled).
-
-    The private edition opens Ocean Optics hardware through python-seabreeze with
-    its own USB backend diagnostics. The public edition keeps the same interface
-    and the same simulated pipeline, and reports honestly that no vendor backend
-    is present when a real connection is attempted.
-    """
-
-    brand = "ocean_optics"
-    unavailable_reason = (
-        "No Ocean Optics backend is available: the public edition does not bundle "
-        "python-seabreeze or its USB drivers. " + VENDOR_DRIVER_UNAVAILABLE_HINT
-    )
-
-    @classmethod
-    def diagnose(cls) -> dict:
-        """Return the Ocean Optics diagnostics report.
-
-        The shape matches what ``diagnostic_dialog._populate_ocean_tab`` reads;
-        every list is empty because no bus scan is possible without a backend.
-        """
-        import platform as _platform
-
-        return {
-            "backend": "SpectrometerModule",
-            "edition": "public",
-            "platform": _platform.system(),
-            "seabreeze_installed": False,
-            "seabreeze_backend": None,
-            "seabreeze_backend_fail_reason": cls.unavailable_reason,
-            "pyusb_installed": False,
-            "libusb_found": False,
-            "libusb_name": None,
-            "usb_devices": [],
-            "seabreeze_devices": [],
-            "driver_warnings": [],
-            "per_device_errors": {},
-            "notes": [
-                cls.unavailable_reason,
-                "Use Simulate to run the full acquisition pipeline against the simulated device.",
-            ],
-        }
-
-
-class ThorlabsCCSModule(SimulatedBackedModule):
-    """Thorlabs CCS module. Real devices need TLCCS/NI-VISA (not bundled).
-
-    The private edition drives CCS100/125/150/175/200 spectrometers through
-    ``TLCCS_64.dll`` over NI-VISA. The public edition keeps the interface and the
-    simulated pipeline (including the ``CCS175`` profile the diagnostics dialog
-    requests) and reports honestly when a real connection is attempted.
-    """
-
-    brand = "thorlabs"
-    default_profile = "CCS175"
-    unavailable_reason = (
-        "No Thorlabs CCS backend is available: the public edition does not bundle "
-        "TLCCS_64.dll or the NI-VISA runtime. " + VENDOR_DRIVER_UNAVAILABLE_HINT
-    )
-
-    def connect_with_resource(self, resource: str) -> str:
-        """Open a specific VISA resource. Not possible in the public edition."""
-        raise NoDeviceError(f"Cannot open VISA resource {resource!r}. {self.unavailable_reason}")
-
-    @classmethod
-    def diagnose(cls) -> dict:
-        """Return the Thorlabs diagnostics report (see ``_populate_thorlabs_tab``)."""
-        import platform as _platform
-
-        return {
-            "backend": "ThorlabsCCSModule",
-            "edition": "public",
-            "supported": _platform.system() == "Windows",
-            "platform": _platform.system(),
-            "dll_found": False,
-            "dll_path": None,
-            "visa_installed": False,
-            "usb_devices": [],
-            "visa_resources": [],
-            "notes": [
-                cls.unavailable_reason,
-                "Use Simulate to run the full acquisition pipeline against the simulated device.",
-            ],
-        }

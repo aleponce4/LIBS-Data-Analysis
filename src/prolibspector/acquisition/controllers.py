@@ -41,7 +41,7 @@ from prolibspector.hardware.grbl_laser import (
     probe_grbl_controller,
     unlock_and_reprobe_grbl_controller,
 )
-from prolibspector.hardware.spectrometer import SpectrometerModule
+from prolibspector.hardware.ocean_optics import SpectrometerModule
 
 
 logger = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ class ManualAcquisitionController:
     def create_spectrometer(self, brand: str):
         """Create the spectrometer adapter for this workflow."""
         if brand == "thorlabs":
-            from prolibspector.hardware.spectrometer import ThorlabsCCSModule
+            from prolibspector.hardware.thorlabs_ccs import ThorlabsCCSModule
 
             return ThorlabsCCSModule()
         if brand == "yixist":
