@@ -1,4 +1,4 @@
-﻿# LIBS Spectroscopy Workbench
+# LIBS Spectroscopy Workbench
 
 [![CI](https://github.com/aleponce4/libs-spectroscopy-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/aleponce4/libs-spectroscopy-workbench/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -6,20 +6,64 @@
 
 ## Overview
 
-The LIBS Spectroscopy Workbench is a scientific software platform for Laser-Induced Breakdown Spectroscopy (LIBS) data processing, spectral visualization, elemental line identification, and 2D spatial mapping.
+Instrument control and analysis software for a Laser-Induced Breakdown
+Spectroscopy bench: stage motion, laser triggering, gated detection, unattended
+multi-well and 2D-mapping runs, and the QC and characterization work around
+them. It drives real hardware, and it runs end to end against simulated devices
+with nothing plugged in.
 
-> **Product Scope & Relationship**  
-> This repository is the public edition of a larger private product (`ProLIBSpector`), which adds support for physical instrument hardware. This public edition provides the generic interfaces, simulated hardware engines, spectral analysis algorithms, interactive visualization, and selected nonconfidential acquisition workflows. Commercial classification models and physical driver binaries are maintained separately.
->
-> **Not in this edition**, and reported as such in the UI rather than failing silently: the YiXist / YXSP spectrometer driver, automated laser-stage runs, automated 2D mapping *acquisition*, unattended multi-plate acquisition across a plate holder, and the trained spectra-readiness calibration. Analysing existing 2D mapping runs is fully supported here; only acquiring them requires the private edition. Modules standing in for these features carry a `PUBLIC-EDITION STUB` header stating what the private version does.
->
-> The Ocean Optics and Thorlabs CCS spectrometer backends and the GRBL laser-stage driver **are** included and drive real hardware. What they need is the corresponding third-party runtime on the machine — python-seabreeze, or ThorSpectra's `TLCCS_64.dll` and NI-VISA — which is the operator's install, not something this repository can ship. With neither present, both backends and the stage still run against the bundled simulators.
->
-> The Python package is still importable as `prolibspector`, so existing code and saved settings keep working.
+This is the open core of **ProLIBSpector**, the software for a LIBS instrument
+built by a small company. What is not here is the parts that cannot be
+redistributed: one vendor's spectrometer DLL and the trained readiness
+calibration. Everything those sit behind -- the device abstraction, the
+out-of-process driver isolation, the run engine -- is here and works.
 
----
+### What it does
 
-## Supported Public Features
+**Motion and firing.** A GRBL controller driven over serial: status polling and
+`$`-setting parsing, homing with limit verification, alarm lockout and `$X`
+recovery, jogging, and program streaming with a flow controller sized to the
+128-byte serial buffer. Laser firing is interlocked behind a safety checklist.
+
+**Gated acquisition.** Spectrometers are reached through a two-tier abstraction,
+with capability negotiation rather than assumption: a device that has no
+programmable trigger delay says so, and the run engine plans around it. Three
+backends ship -- Ocean Optics over python-seabreeze, Thorlabs CCS through
+`TLCCS_64.dll` over NI-VISA, and a brokered client that runs a fragile vendor DLL
+in a separate process so a hung driver is a killable subprocess rather than a
+frozen application.
+
+**Unattended runs.** Plate workflows for 6 through 384-well formats with
+configurable shots per well, live well-status maps, per-shot discard, targeted
+repair passes, atomic run-state persistence, and resume of an interrupted run
+from either its state file or a folder scan. 2D raster mapping streams spectra
+to a memory-mapped store as it goes.
+
+**Timing characterization.** Gated LIBS lives or dies on when the detector opens:
+the plasma continuum decays in about 1.6 us while the emission lines persist for
+tens, so a gate that opens too early buries the lines and one that opens too late
+loses them. `tools/delay_sweep_example.py` sweeps trigger delay against
+integration window, scores each cell on resolved line count and signal-to-noise,
+and recommends an operating point. It runs against the simulated detector, so the
+figure below is reproducible from a clean checkout.
+
+![Trigger delay and integration sweep](docs/img/delay_sweep_example/delay_sweep_heatmap.png)
+
+*Signal-to-noise across an 8 x 5 grid of trigger delays and integration windows,
+simulated. The interior optimum is the point of the exercise: both axes trade
+off, and the best setting is not at either extreme.* Regenerate with
+`python tools/delay_sweep_example.py docs/img/delay_sweep_example`; method notes
+in [docs/trigger_delay_sweep.md](docs/trigger_delay_sweep.md).
+
+**Running without hardware.** Two levels of simulation. `SimulatedGrblLaserController`
+stands in for the controller in-process, which is fast and fine for exercising the
+run engine. `GrblSerialSimulator` fakes the *serial port* instead, so the real
+driver runs unmodified against something that answers the way GRBL 1.1 does --
+which is what makes the command framing, the ack ledger, and the status parser
+testable at all. Faults are injectable, because the driver code worth testing is
+the error handling.
+
+## Analysis features
 
 - **Hardware Simulation Engine**: `SimulatedSpectrometer` engine mimicking physical nanosecond plasma emission decay, dark counts, exposure integration timing, shot noise, and trigger delay responses.
 - **High-Throughput Plate Workflow**: Plate autosave for 6/12/24/48/96/384-well formats with configurable shots-per-well and row- or column-major ordering, a live well-status plate map, per-shot discard, specific-well repair passes, atomic run-state persistence, and resume of an interrupted plate (from saved state or by scanning the folder).

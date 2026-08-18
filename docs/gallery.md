@@ -1,4 +1,4 @@
-﻿# Technical Gallery & Extended Architecture
+# Technical Gallery & Extended Architecture
 
 This document provides supplementary visual case studies, file format specifications, caching internals, and hardware integration details for the LIBS Spectroscopy Workbench.
 
