@@ -138,6 +138,23 @@ SIMULATION_PROFILES = {
         "trigger_modes": {"normal": 0, "external": 3},
         "trigger_delay_max_us": 1_000_000,
     },
+    # A gated detector: microsecond gating together with a programmable trigger
+    # delay. LIBS needs both at once, because the useful signal sits in a window
+    # that opens after the continuum has decayed and closes while the lines are
+    # still bright. None of the Ocean Optics or Thorlabs parts below can do it --
+    # they integrate from the trigger edge -- so exercising the timing work
+    # against a simulated device needs a profile that can.
+    "GatedCCD": {
+        "model": "GATED-CCD-SIM",
+        "pixels": 4096,
+        "wl_min": 200.0,
+        "wl_max": 1100.0,
+        "max_intensity": 65535,
+        "int_min_us": 9,
+        "int_max_us": 1_000_000,
+        "trigger_modes": {"normal": 0, "external": 3},
+        "trigger_delay_max_us": 1_000_000,
+    },
     # ── Ocean Optics ─────────────────────────────────────────────
     # OOI-protocol devices number external *edge* trigger 3; OBP devices
     # (HDX and the Ocean ST/SR line) number it 1.

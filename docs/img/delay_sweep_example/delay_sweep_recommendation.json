@@ -1,0 +1,96 @@
+{
+  "best_snr_delay_us": 16.0,
+  "best_snr_integration_us": 100.0,
+  "candidates": [
+    {
+      "delay_us": 16.0,
+      "information_score": 112.10636157949993,
+      "integration_us": 30.0,
+      "line_count": 17,
+      "sbr": 56.82831045205716,
+      "snr": 1282.176832095979
+    },
+    {
+      "delay_us": 8.0,
+      "information_score": 110.98607700674488,
+      "integration_us": 30.0,
+      "line_count": 17,
+      "sbr": 18.069109436033283,
+      "snr": 1196.5074112926009
+    },
+    {
+      "delay_us": 16.0,
+      "information_score": 114.71750150748788,
+      "integration_us": 100.0,
+      "line_count": 17,
+      "sbr": 56.4528677414704,
+      "snr": 1498.6359265457577
+    },
+    {
+      "delay_us": 8.0,
+      "information_score": 113.78483647292502,
+      "integration_us": 100.0,
+      "line_count": 17,
+      "sbr": 20.614227098277514,
+      "snr": 1414.4633600889547
+    },
+    {
+      "delay_us": 16.0,
+      "information_score": 114.60829123347821,
+      "integration_us": 300.0,
+      "line_count": 17,
+      "sbr": 54.509665780086245,
+      "snr": 1484.454455087683
+    },
+    {
+      "delay_us": 8.0,
+      "information_score": 113.94792683615492,
+      "integration_us": 300.0,
+      "line_count": 17,
+      "sbr": 20.58182866037085,
+      "snr": 1427.6064365378616
+    },
+    {
+      "delay_us": 16.0,
+      "information_score": 114.15611119932579,
+      "integration_us": 1000.0,
+      "line_count": 17,
+      "sbr": 49.53721224515943,
+      "snr": 1447.7062490822839
+    },
+    {
+      "delay_us": 8.0,
+      "information_score": 113.63170808853373,
+      "integration_us": 1000.0,
+      "line_count": 17,
+      "sbr": 20.175188349939432,
+      "snr": 1401.793348607593
+    }
+  ],
+  "column_delays_us": [
+    0.0,
+    0.5,
+    1.0,
+    2.0,
+    4.0,
+    8.0,
+    16.0,
+    32.0
+  ],
+  "integration_times_ms": [
+    0.009,
+    0.03,
+    0.1,
+    0.3,
+    1.0
+  ],
+  "reasons": [
+    "20 setting(s) excluded for detector saturation.",
+    "8 setting(s) within the tolerance band of the best information score (114.7 +/- 5.7; every persistent resolved line counts, not only the strongest).",
+    "Recommended 16 us delay + 0.03 ms integration: 17 resolved line(s), strongest-line SNR 1282.2, saturation 0.00%."
+  ],
+  "recommended_delay_us": 16.0,
+  "recommended_integration_us": 30.0,
+  "run_directory": "<simulated generic gated detector joint sweep>",
+  "run_type": "mapping"
+}
