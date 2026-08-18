@@ -1,7 +1,13 @@
-﻿"""PUBLIC-EDITION STUB.
+"""Placeholder for the YiXist YSM backend, whose driver is not distributed here.
 
-This feature is not included in the public edition. The interface below imports
-cleanly and reports the feature as unavailable rather than failing silently.
+The device is driven through a vendor C DLL that cannot be redistributed, so the
+binding lives outside this repository. What remains is the seam: the class keeps
+the SpectrometerBase surface so device selection, the diagnostics dialog, and the
+run-metadata builder all compile and behave, and connecting reports the backend
+as unavailable instead of raising something opaque from ctypes.
+
+Use a simulated profile to exercise the acquisition pipeline -- GatedCCD matches
+this class of detector, with microsecond gating and a programmable trigger delay.
 """
 
 from __future__ import annotations

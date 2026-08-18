@@ -16,7 +16,7 @@ from typing import Any, Callable, Sequence
 import numpy as np
 import pandas as pd
 
-from prolibspector.analysis.adjust_plot import normalize_min_max, normalize_total_intensity
+from prolibspector.analysis.adjust_plot import normalize_min_max
 from prolibspector.analysis.adjust_spectrum import apply_baseline_removal, apply_smoothing
 from prolibspector.analysis.element_database import DEFAULT_DATABASE_LABEL, get_database_path, load_element_database
 from prolibspector.analysis.spectrum_io import read_spectrum_file, write_spectrum_file
@@ -1845,9 +1845,11 @@ def load_or_build_processed_mapping_run(
         nonlocal write_index
         diagnostics_by_position[int(result["row_position"])] = result["diagnostics"]
         if result["success"]:
-            if write_index >= intensities_writer.shape[0]:
+            # ruff cannot tell that this closure only runs before the enclosing
+            # `del intensities_writer` below, so it reads the memmap as unbound.
+            if write_index >= intensities_writer.shape[0]:  # noqa: F821
                 raise RuntimeError("Preprocessed spectrum count exceeded allocated cache size.")
-            intensities_writer[write_index, :] = np.asarray(result["intensities"], dtype=np.float32)
+            intensities_writer[write_index, :] = np.asarray(result["intensities"], dtype=np.float32)  # noqa: F821
             shot_rows.append(result["row_info"])
             write_index += 1
 

@@ -76,7 +76,7 @@ from prolibspector.acquisition.automation_mapping import (
     save_mapping_run_state,
     save_mapping_summary,
 )
-from prolibspector.acquisition.mapping_save_writer import MappingSaveWriter, MappingSaveWriterError
+from prolibspector.acquisition.mapping_save_writer import MappingSaveWriter
 from prolibspector.acquisition.mapping_spectrum_store import (
     MappingSpectrumStore,
     binary_row_index_for_target,
@@ -96,7 +96,7 @@ from prolibspector.acquisition.spectra_readiness_qc import (
     run_automated_spectra_qc,
 )
 from prolibspector.acquisition.worker import AcquisitionMessage, AcquisitionWorker, AutoSaveError
-from prolibspector.hardware.grbl_laser import GrblLaserError, GrblStreamAborted
+from prolibspector.hardware.grbl_laser import GrblStreamAborted
 from prolibspector.hardware.spectrometer import apply_simulated_trigger_delay_response
 
 

@@ -37,15 +37,17 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Committing changes to git...
+echo Checking for uncommitted changes...
 echo ================================
-git add *.py *.bat *.md requirements.txt Icons\*.png Icons\*.ico Icons\*.jpg
-git commit -m "Release %version%: Update with new features"
+REM Releases are cut from an already-committed tree. The script used to stage a
+REM glob from the repo root and commit "Update with new features" on your behalf,
+REM which both missed the src/ layout and wrote a commit message that said nothing.
+git diff --quiet && git diff --cached --quiet
 if %errorlevel% neq 0 (
-    echo Warning: Git commit may have failed (could be no changes)
+    echo Error: working tree has uncommitted changes.
+    echo Commit them yourself, with a message describing the release, then re-run.
+    exit /b 1
 )
-
-git push
 if %errorlevel% neq 0 (
     echo Error: Git push failed
     pause

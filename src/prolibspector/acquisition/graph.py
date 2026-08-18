@@ -3,8 +3,6 @@
 # Optimized for real-time display using set_ydata() + draw_idle() instead of full redraws.
 
 import tkinter as tk
-from tkinter import ttk
-import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.figure import Figure

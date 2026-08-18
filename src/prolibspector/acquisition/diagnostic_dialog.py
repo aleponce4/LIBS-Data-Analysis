@@ -10,7 +10,7 @@ import threading
 import logging
 
 from prolibspector.core.runtime import supports_thorlabs_ccs
-from prolibspector.core.ui_scale import scaled_font, scaled_wrap, ui_scale_for_widget
+from prolibspector.core.ui_scale import scaled_font, scaled_wrap
 from prolibspector.core.windowing import apply_window_policy, center_on_parent_or_screen, create_dialog
 from prolibspector.core.ui_theme import get_palette
 
@@ -338,10 +338,8 @@ class DiagnosticDialog:
 
                 if err:
                     label_text = f"{model}  (S/N: {serial})  —  ✗ {err}"
-                    fg = _error_color()
                 else:
                     label_text = f"{model}  (S/N: {serial})  —  ✓ connectable"
-                    fg = _ok_color()
 
                 rb = ttk.Radiobutton(
                     tab, text=label_text, value=idx,

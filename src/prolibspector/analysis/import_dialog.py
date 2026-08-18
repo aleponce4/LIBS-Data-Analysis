@@ -4,7 +4,6 @@ import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import pandas as pd
-import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from prolibspector.core.ui_scale import scaled_font, scaled_wrap, ui_scale_for_widget

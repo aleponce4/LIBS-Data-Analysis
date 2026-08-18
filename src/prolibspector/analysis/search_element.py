@@ -5,7 +5,7 @@ from tkinter import messagebox
 import markdown
 from tkhtmlview import HTMLLabel
 from prolibspector.core.tooltip import attach_tooltip
-from prolibspector.core.ui_scale import scaled_font, scaled_int, ui_scale_for_widget
+from prolibspector.core.ui_scale import ui_scale_for_widget
 from prolibspector.core.windowing import apply_window_policy, create_dialog, make_markdown_help_window, make_scrollable_frame
 
 from prolibspector.analysis.element_database import (
@@ -20,8 +20,6 @@ from prolibspector.analysis.label_peaks import label_peaks
 # The table data, tiles, and grid layout are shared with the mapping
 # element selector via element_table (re-exported for compatibility).
 from prolibspector.analysis.element_table import (  # noqa: E402
-    ELEMENTS,
-    GROUP_COLORS as colors,
     MAX_SELECTED_ELEMENTS,
     build_periodic_grid,
 )

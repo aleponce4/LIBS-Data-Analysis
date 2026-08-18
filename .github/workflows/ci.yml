@@ -46,6 +46,9 @@ jobs:
         if: runner.os == 'Windows'
         run: python -m pytest tests/test_imports.py -v
 
+      - name: Lint
+        run: ruff check .
+
       - name: Run pytest (Linux headless)
         if: runner.os == 'Linux'
         run: xvfb-run pytest

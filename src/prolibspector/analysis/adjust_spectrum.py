@@ -5,7 +5,6 @@ import tkinter as tk
 from tkinter import ttk  # ttk is a submodule of tkinter for themed widgets
 from tkinter import messagebox
 import numpy as np
-import scipy
 from scipy.signal import savgol_filter, medfilt
 from scipy.ndimage import gaussian_filter1d
 

@@ -1,7 +1,12 @@
-﻿"""PUBLIC-EDITION STUB.
+"""Placeholder for the brokered YiXist client.
 
-This feature is not included in the public edition. The interface below imports
-cleanly and reports the feature as unavailable rather than failing silently.
+The real client runs the vendor DLL in a separate process and talks to it over a
+pipe, because that DLL can wedge hard enough to take the GUI down with it -- an
+out-of-process broker turns a hung driver into a killable subprocess instead of a
+frozen application. That isolation machinery is generic and does ship here, in
+brokered_spectrometer.py; only the YiXist-specific broker target is absent.
+
+See BrokeredSpectrometerClient for the part worth reading.
 """
 
 from __future__ import annotations

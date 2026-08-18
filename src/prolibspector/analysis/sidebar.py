@@ -634,7 +634,7 @@ def _finish_mapping_analysis_job(app, result) -> None:
             f"Elements: {len(result.config.element_symbols)} | Detected cells: {detected_total} | Uncertain: {uncertain_total} | {cache_text}"
             + (f"\nTiming: {timing_text}" if timing_text else ""),
         )
-        _post_mapping_status(app, f"Mapping analysis complete." + (f" {timing_text}" if timing_text else ""))
+        _post_mapping_status(app, "Mapping analysis complete." + (f" {timing_text}" if timing_text else ""))
         _refresh_mapping_display_controls(app)
         return
     app.render_mapping_result(result)
@@ -646,7 +646,7 @@ def _finish_mapping_analysis_job(app, result) -> None:
         f"Element: {result.element_label} | Accepted lines: {result.accepted_line_count} | {cache_text}"
         + (f"\nTiming: {timing_text}" if timing_text else ""),
     )
-    _post_mapping_status(app, f"Mapping analysis complete." + (f" {timing_text}" if timing_text else ""))
+    _post_mapping_status(app, "Mapping analysis complete." + (f" {timing_text}" if timing_text else ""))
     _refresh_mapping_display_controls(app)
 
 

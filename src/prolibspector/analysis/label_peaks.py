@@ -4,15 +4,9 @@ import tkinter as tk
 from tkinter import ttk
 from scipy.signal import argrelextrema
 import numpy as np
-from tkinter import messagebox
 import pandas as pd
-import matplotlib.lines as mlines
-import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
-import numpy as np
-import time
-import re
 import textalloc as ta
 import markdown
 from tkhtmlview import HTMLLabel

@@ -3,9 +3,8 @@
 import tkinter as tk
 from tkinter import ttk
 
-from prolibspector.core.icons import configure_themed_icon
 from prolibspector.core.runtime import set_window_icon
-from prolibspector.core.ui_scale import scaled_font, scaled_int, scaled_padding, scaled_wrap, ui_scale_for_widget
+from prolibspector.core.ui_scale import scaled_font, scaled_int, scaled_wrap, ui_scale_for_widget
 from prolibspector.core.windowing import apply_window_policy, create_dialog
 
 LAUNCHER_PREFERRED_SIZE = (720, 520)

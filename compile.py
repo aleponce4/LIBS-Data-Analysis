@@ -25,7 +25,8 @@ display_name = "LIBS Software"
 primary_zip_name = f"{display_name}.zip"
 
 # Locate Tcl/Tk library directories so PyInstaller bundles init.tcl
-_root = tkinter.Tk(); _root.withdraw()
+_root = tkinter.Tk()
+_root.withdraw()
 _tcl_dir = _root.tk.eval("info library")   # e.g. .../tcl/tcl8.6
 _tk_dir = os.path.join(os.path.dirname(_tcl_dir),
                        f"tk{_root.tk.eval('info patchlevel').rsplit('.', 1)[0]}")

@@ -1,7 +1,6 @@
 """Tests for spectral preprocessing functions."""
 
 import numpy as np
-import pytest
 from prolibspector.analysis.adjust_spectrum import (
     apply_baseline_removal,
     apply_smoothing,

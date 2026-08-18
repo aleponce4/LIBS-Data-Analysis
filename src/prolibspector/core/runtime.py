@@ -1,4 +1,4 @@
-﻿"""Platform and Tk runtime helpers."""
+"""Platform and Tk runtime helpers."""
 
 from __future__ import annotations
 

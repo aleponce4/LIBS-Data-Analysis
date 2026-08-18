@@ -1,12 +1,11 @@
 """Sidebar controls for Acquisition Mode."""
 
-import os
 import tkinter as tk
 from tkinter import ttk
 
 from prolibspector.app.launcher import MODE_CHOOSER
 from prolibspector.core.icons import configure_themed_icon
-from prolibspector.core.ui_scale import scaled_font, scaled_int, scaled_padding, scaled_wrap, ui_scale_for_widget
+from prolibspector.core.ui_scale import scaled_font, scaled_int, scaled_wrap, ui_scale_for_widget
 from prolibspector.core.settings import default_save_directory, get_ui_pref
 from prolibspector.core.tooltip import attach_tooltip
 from prolibspector.core.ui_theme import get_palette

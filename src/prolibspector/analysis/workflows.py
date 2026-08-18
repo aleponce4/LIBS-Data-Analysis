@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
 from tkinter import messagebox
-from prolibspector.analysis.graph import update_title
 from prolibspector.analysis.adjust_spectrum import adjust_spectrum as actual_adjust_spectrum
 from prolibspector.analysis.adjust_plot import adjust_plot as actual_adjust_plot
 from prolibspector.analysis.mapping_analysis import export_mapping_result, materialize_mapping_spectra_to_csv

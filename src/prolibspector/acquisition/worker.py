@@ -922,7 +922,6 @@ class AcquisitionWorker(threading.Thread):
         if plate_state is None:
             return
 
-        plate_dir = os.path.join(self.save_directory, plate_state.config.safe_plate_name)
         save_plate_reproducibility_log(
             self.save_directory,
             plate_state,

@@ -2,7 +2,6 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from PIL import Image, ImageTk
 import numpy as np
 
 from prolibspector.analysis.adjust_spectrum import (
@@ -13,7 +12,6 @@ from prolibspector.analysis.adjust_spectrum import (
 from prolibspector.core.paths import settings_dir
 from prolibspector.core.settings import delete_settings, get_default_settings, load_settings, save_settings
 from prolibspector.core.ui_scale import scaled_font, scaled_wrap, ui_scale_for_widget
-from prolibspector.core.ui_theme import get_palette
 from prolibspector.core.windowing import apply_window_policy, create_dialog
 
 

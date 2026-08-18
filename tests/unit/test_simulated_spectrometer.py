@@ -2,7 +2,6 @@
 
 import numpy as np
 import pytest
-from prolibspector.hardware.spectrometer import SimulatedSpectrometer, SIMULATION_PROFILES
 
 
 def test_simulated_spectrometer_initialization(sim_spectrometer):
